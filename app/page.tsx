@@ -30,8 +30,10 @@ export async function POST(request: Request) {
   };
 
   // Load sensitive data from environment variables
-  const CLOUDFLARE_AI_URL = process.env.CLOUDFLARE_AI_URL;
-  const CLOUDFLARE_AI_TOKEN = process.env.CLOUDFLARE_AI_TOKEN;
+  const NEXT_PUBLIC_CLOUDFLARE_AI_URL =
+    process.env.NEXT_PUBLIC_NEXT_PUBLIC_CLOUDFLARE_AI_URL;
+  const NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN =
+    process.env.NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN;
 
   if (request.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -64,14 +66,14 @@ export async function POST(request: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      if (!CLOUDFLARE_AI_URL || !CLOUDFLARE_AI_TOKEN) {
+      if (!NEXT_PUBLIC_CLOUDFLARE_AI_URL || !NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN) {
         throw new Error("Cloudflare AI environment variables are not set");
       }
-      const response = await fetch(CLOUDFLARE_AI_URL, {
+      const response = await fetch(NEXT_PUBLIC_CLOUDFLARE_AI_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${CLOUDFLARE_AI_TOKEN}`,
+          Authorization: `Bearer ${NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN}`,
         },
         body: JSON.stringify({ prompt: aiPrompt }),
         signal: controller.signal,
