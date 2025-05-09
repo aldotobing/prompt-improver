@@ -28,9 +28,6 @@ jobs:
           CLOUDFLARE_AI_TOKEN: ${{ secrets.CLOUDFLARE_AI_TOKEN }}
           NODE_ENV: production
 
-      - name: Export static site
-        run: npm run export
-
       - name: Create CNAME file
         run: |
           mkdir -p ./out
