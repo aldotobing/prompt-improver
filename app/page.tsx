@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   // Load sensitive data from environment variables
   const NEXT_PUBLIC_CLOUDFLARE_AI_URL =
     process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL;
+
   const NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN =
     process.env.NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN;
 
