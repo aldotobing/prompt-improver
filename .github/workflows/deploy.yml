@@ -25,7 +25,6 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_CLOUDFLARE_AI_URL: ${{ secrets.NEXT_PUBLIC_CLOUDFLARE_AI_URL }}
-          NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN: ${{ secrets.NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN }}
           NODE_ENV: production
 
       - name: Create CNAME file
