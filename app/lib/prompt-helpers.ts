@@ -3,6 +3,10 @@ import type React from "react";
 
 type SetState<T> = React.Dispatch<React.SetStateAction<T>>;
 
+const NEXT_PUBLIC_CLOUDFLARE_AI_URL = process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL;
+const NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN;
+
 export interface ImprovePromptHelperArgs {
   prompt: string;
   setLoading: SetState<boolean>;
@@ -23,9 +27,16 @@ export async function improvePromptHelper({
   setError("");
   setNote("");
   try {
-    const response = await fetch("/api/improve-prompt", {
+    if (!NEXT_PUBLIC_CLOUDFLARE_AI_URL) {
+      throw new Error("Cloudflare AI URL is not defined");
+    }
+
+    const response = await fetch(NEXT_PUBLIC_CLOUDFLARE_AI_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN}`,
+      },
       body: JSON.stringify({ prompt }),
     });
     const data = await response.json();
@@ -61,9 +72,15 @@ export async function sendDirectlyHelper({
   setLoading(true);
   setError("");
   try {
-    const response = await fetch("/api/chat", {
+    if (!NEXT_PUBLIC_CLOUDFLARE_AI_URL) {
+      throw new Error("Cloudflare AI URL is not defined");
+    }
+    const response = await fetch(NEXT_PUBLIC_CLOUDFLARE_AI_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        authorization: `Bearer ${NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN}`,
+      },
       body: JSON.stringify({
         messages: [{ role: "user", content: prompt }],
       }),
