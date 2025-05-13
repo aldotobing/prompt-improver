@@ -5,9 +5,12 @@ A web application to help you enhance your prompts for better AI responses. Tran
 ## Features
 
 - **Prompt Improvement:** Enter a vague or unclear prompt and receive a clearer, more specific version.
-- **Chat with AI:** Send your improved prompt directly to an AI model and view the response.
-- **Fallback Logic:** If the AI service is unavailable, the app uses a local prompt improvement algorithm.
 - **Modern UI:** Built with React, Next.js, Tailwind CSS, and shadcn/ui components for a clean and responsive interface.
+
+### Future Development
+
+- **Chat with AI:** Enable users to send their improved prompts directly to an AI model and view the response.
+- **Fallback Logic:** Implement a local prompt improvement algorithm to handle cases when the AI service is unavailable.
 
 ## Getting Started
 
@@ -20,7 +23,7 @@ A web application to help you enhance your prompts for better AI responses. Tran
 
 1. **Clone the repository:**
    ```cmd
-   git clone <your-repo-url>
+   git clone prompt-improver
    cd prompt-improver
    ```
 2. **Install dependencies:**
@@ -28,8 +31,6 @@ A web application to help you enhance your prompts for better AI responses. Tran
    ```cmd
    pnpm install
    ```
-
-   Or use `npm install` or `yarn install` if you prefer.
 
 3. **Set up environment variables:**
 
@@ -60,7 +61,6 @@ pnpm start
 
 - **Tailwind CSS**: Configured via `tailwind.config.ts` and `postcss.config.mjs`.
 - **TypeScript**: Strict mode enabled, config in `tsconfig.json`.
-- **shadcn/ui**: UI components managed via `components.json`.
 
 ## Credits
 
