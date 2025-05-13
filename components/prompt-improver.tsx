@@ -173,7 +173,7 @@ export default function PromptImprover({ theme }: { theme: string }) {
 
   return (
     <div
-      className={`w-full min-h-screen p-4 transition-colors duration-300 ${
+      className={`w-full min-h-screen p-8 transition-colors duration-300 ${
         theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50"
       }`}
     >

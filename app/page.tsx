@@ -9,12 +9,8 @@ export default function Home() {
 
   // Handle theme changes
   useEffect(() => {
-    // Get initial theme from system or localStorage
-    const savedTheme =
-      localStorage.getItem("theme") ||
-      (window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light");
+    // Set light mode as default
+    const savedTheme = localStorage.getItem("theme") || "light";
 
     setTheme(savedTheme);
     document.documentElement.classList.toggle("dark", savedTheme === "dark");
@@ -66,7 +62,7 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        <section className="animate-fade-in-slow bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <section className="animate-fade-in-slow bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 mb-8">
           <PromptImprover theme={theme} />
         </section>
 
