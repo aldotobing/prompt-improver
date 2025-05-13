@@ -2,11 +2,7 @@
 
 import { SetStateAction, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
-import {
-  improvePromptHelper,
-  sendDirectlyHelper,
-  sendToAIHelper,
-} from "./lib/prompt-helpers";
+import { sendDirectlyHelper, sendToAIHelper } from "./lib/prompt-helpers";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,142 +16,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Sparkles, Send, MessageCircle, Zap } from "lucide-react";
-
-export async function POST(request: Request) {
-  // Enable CORS
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
-  // Load sensitive data from environment variables
-  const NEXT_PUBLIC_CLOUDFLARE_AI_URL =
-    process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL;
-
-  const NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN =
-    process.env.NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN;
-
-  if (request.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { prompt } = await request.json();
-
-    if (!prompt) {
-      return new Response(JSON.stringify({ error: "Missing prompt" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      });
-    }
-
-    // Create the prompt for the AI
-    const aiPrompt = `You are an expert prompt engineer. 
-    Analyze and enhance the following prompt while strictly preserving its original intent, 
-    context, tone, and language (English, Indonesian, or other). 
-    Return only the improved version of the prompt without any explanation, 
-    preamble, formatting, commentary, or additional content:\n\n"${prompt}"`;
-
-    console.log("Sending to Cloudflare Workers AI:", aiPrompt);
-
-    // Send to Cloudflare Workers AI with a timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-    try {
-      if (!NEXT_PUBLIC_CLOUDFLARE_AI_URL || !NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN) {
-        throw new Error("Cloudflare AI environment variables are not set");
-      }
-      const response = await fetch(NEXT_PUBLIC_CLOUDFLARE_AI_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${NEXT_PUBLIC_CLOUDFLARE_AI_TOKEN}`,
-        },
-        body: JSON.stringify({ prompt: aiPrompt }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          "Workers AI response not OK:",
-          response.status,
-          errorText
-        );
-
-        // If we get an error, fall back to local improvement
-        console.log("Falling back to local prompt improvement");
-        const locallyImprovedPrompt = fallbackImprovePrompt(prompt);
-
-        return new Response(
-          JSON.stringify({
-            originalPrompt: prompt,
-            improvedPrompt: locallyImprovedPrompt,
-            note: "Used fallback improvement due to API error",
-          }),
-          {
-            headers: {
-              "Content-Type": "application/json",
-              ...corsHeaders,
-            },
-          }
-        );
-      }
-
-      const data = await response.json();
-      console.log("Workers AI response:", JSON.stringify(data));
-
-      // Check if the response has the expected format
-      if (!data.result || !data.result.response) {
-        console.error("Unexpected response format:", data);
-        throw new Error("Unexpected response format from Workers AI");
-      }
-
-      const improvedPrompt = data.result.response;
-
-      return new Response(
-        JSON.stringify({
-          originalPrompt: prompt,
-          improvedPrompt,
-        }),
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...corsHeaders,
-          },
-        }
-      );
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        throw new Error("Request to Workers AI timed out after 30 seconds");
-      }
-      throw fetchError;
-    }
-  } catch (error) {
-    console.error("Error improving prompt:", error);
-    return new Response(
-      JSON.stringify({
-        error: "Failed to improve prompt",
-        details: error instanceof Error ? error.message : String(error),
-      }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
-  }
-}
 
 /**
  * Fallback prompt improvement function if the API fails
@@ -204,15 +64,30 @@ export default function Home() {
     setImprovedPrompt(""); // Reset improved prompt
   };
 
-  // Wrappers for helpers
-  const improvePrompt = () =>
-    improvePromptHelper({
-      prompt,
-      setLoading,
-      setError,
-      setNote,
-      setImprovedPrompt,
-    });
+  // Directly improve prompt logic (inlined, not using helper)
+  // Calls the API route to improve the prompt (matches backend logic)
+  const improvePrompt = async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setError("");
+    setNote("");
+    try {
+      const response = await fetch("/api/improve-prompt_", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to improve prompt");
+      setImprovedPrompt(data.improvedPrompt);
+      setNote(data.note || "");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sendDirectly = () =>
     sendDirectlyHelper({ prompt, setLoading, setError, setAiResponse });
