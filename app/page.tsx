@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import PromptImprover from "@/components/prompt-improver";
 import { Moon, Sun, Github, Twitter } from "lucide-react";
+import { motion } from "framer-motion";
+import { BeSpecificDialog } from "@/components/tips/be-specific-dialog";
+import { ProvideContextDialog } from "@/components/tips/provide-context-dialog";
+import { UseExamplesDialog } from "@/components/tips/use-examples-dialog";
 
 export default function Home() {
   const [theme, setTheme] = useState("light");
@@ -66,11 +70,50 @@ export default function Home() {
           <PromptImprover theme={theme} />
         </section>
 
-        {/* Testimonials / Tips Section */}
+        {/* Prompt Writing Tips Section */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6 text-center">
-            Prompt Writing Tips
-          </h2>
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+              Master the Art of Prompt Writing
+            </h2>
+            <motion.p
+              className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto relative"
+              initial={{ cursor: "default" }}
+              whileHover={{ cursor: "pointer" }}
+            >
+              Unlock the full potential of AI with these expert tips.{" "}
+              <motion.span
+                initial={{ opacity: 0.8 }}
+                animate={{
+                  opacity: [0.8, 1, 0.8],
+                  scale: [1, 1.02, 1],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                }}
+                className="inline-flex items-center text-black dark:text-purple-400"
+              >
+                Click each card to dive deeper into prompt &nbsp;
+                <motion.span className="line-through">engineering</motion.span>
+                &nbsp; techniques{" "}
+                <motion.span
+                  animate={{
+                    x: [0, 3, 0],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                  }}
+                  className="inline-block ml-1"
+                >
+                  👆
+                </motion.span>
+              </motion.span>
+            </motion.p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <TipCard
               title="Be Specific"
@@ -132,11 +175,79 @@ function TipCard({
   title: string;
   description: string;
 }) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Get icon based on title
+  const getIcon = (title: string) => {
+    switch (title) {
+      case "Be Specific":
+        return "🎯";
+      case "Provide Context":
+        return "🔍";
+      case "Use Examples":
+        return "💡";
+      default:
+        return "✨";
+    }
+  };
+
+  // Get the appropriate dialog component
+  const DialogComponent = (() => {
+    switch (title) {
+      case "Be Specific":
+        return BeSpecificDialog;
+      case "Provide Context":
+        return ProvideContextDialog;
+      case "Use Examples":
+        return UseExamplesDialog;
+      default:
+        return null;
+    }
+  })();
+
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-      <h3 className="font-bold mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
-    </div>
+    <>
+      <motion.div
+        whileHover={{ scale: 1.03, y: -5 }}
+        whileTap={{ scale: 0.98 }}
+        className="group relative overflow-hidden bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 cursor-pointer"
+        onClick={() => setIsDialogOpen(true)}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-purple-500/5 dark:from-purple-500/10 dark:via-blue-500/10 dark:to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <motion.div
+          className="absolute -right-2 -top-2 bg-purple-500/10 dark:bg-purple-500/20 w-20 h-20 rounded-full blur-2xl group-hover:bg-purple-500/20 dark:group-hover:bg-purple-500/30 transition-all duration-300"
+          initial={{ scale: 0.8, opacity: 0.5 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ repeat: Infinity, duration: 3, repeatType: "reverse" }}
+        />
+        <div className="relative z-10">
+          <motion.span
+            className="text-3xl mb-5 block transform-gpu"
+            whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+            role="img"
+            aria-label={title}
+          >
+            {getIcon(title)}
+          </motion.span>
+          <h3 className="font-bold text-xl mb-3 text-gray-900 dark:text-gray-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+            {title}
+          </h3>
+          <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300 group-hover:text-gray-800 dark:group-hover:text-gray-200">
+            {description}
+          </p>
+          <div className="mt-4 flex items-center text-purple-600 dark:text-purple-400 text-sm font-medium opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+            Learn more <span className="ml-1">→</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {DialogComponent && (
+        <DialogComponent
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
