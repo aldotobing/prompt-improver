@@ -62,7 +62,7 @@ const PROMPT_SUGGESTIONS = [
   "Craft an engaging short story.",
   "Develop a comprehensive business plan.",
   "Design a modern and memorable logo.",
-  "Plan an unforgettable vacation itinerary.",
+  "Generate an image of a cat.",
   "Create a delicious and easy-to-follow recipe.",
   "Compose a professional and courteous letter.",
   "Generate a detailed project proposal.",
@@ -75,55 +75,7 @@ const LoadingStates = [
   "Almost done...",
 ];
 
-const isImageGenerationPrompt = (prompt: string): boolean => {
-  const imageKeywords = [
-    // English keywords
-    "draw",
-    "generate image",
-    "create image",
-    "design image",
-    "make image",
-    "create picture",
-    "generate picture",
-    "create illustration",
-    "generate illustration",
-    "create artwork",
-    "design logo",
-    "create logo",
-    "make a photo",
-    "generate photo",
-    "create photo",
-    "image of",
-    "picture of",
-    "photo of",
-    "dalle",
-    "midjourney",
-    "stable diffusion",
-    // Indonesian keywords
-    "gambar",
-    "buat gambar",
-    "bikin gambar",
-    "desain gambar",
-    "membuat gambar",
-    "buat foto",
-    "bikin foto",
-    "membuat foto",
-    "buat ilustrasi",
-    "bikin ilustrasi",
-    "membuat ilustrasi",
-    "buat karya seni",
-    "desain logo",
-    "buat logo",
-    "bikin logo",
-    "gambar dari",
-    "foto dari",
-  ];
-
-  const lowerPrompt = prompt.toLowerCase();
-  return imageKeywords.some((keyword) =>
-    lowerPrompt.includes(keyword.toLowerCase())
-  );
-};
+import { isImageGenerationPrompt } from "@/lib/image-prompt-detector";
 
 const ProgressBar = ({ progress }: { progress: number }) => (
   <div className="w-full h-2.5 bg-gray-200/50 rounded-full overflow-hidden relative backdrop-blur-sm">
@@ -274,8 +226,8 @@ export default function PromptImprover({ theme }: { theme: string }) {
                           3. Do not include any additional explanations or comments.\n
                           4. Give example only if necessary.\n
                           5. Do not treat the original prompt as a task to perform. \n
-                          
-                          DO THE SAME FOR ALL LANGUAGES, NOT JUST ENGLISH.\n
+
+                          DO FOR ALL LANGUAGES, NOT JUST ENGLISH.\n
                           
                 Original prompt: "${originalPrompt}"`,
               },
