@@ -95,9 +95,16 @@ export default function Home() {
                 }}
                 className="inline-flex items-center text-black dark:text-purple-400"
               >
-                Click each card to dive deeper into prompt &nbsp;
-                <motion.span className="line-through">engineering</motion.span>
-                &nbsp; techniques{" "}
+                <span className="md:hidden block mb-2">
+                  Tap the cards below to learn more
+                </span>
+                <span className="hidden md:inline">
+                  Click each card to dive deeper into prompt{" "}
+                  <motion.span className="line-through">
+                    engineering
+                  </motion.span>{" "}
+                  techniques{" "}
+                </span>
                 <motion.span
                   animate={{
                     x: [0, 3, 0],
@@ -107,7 +114,7 @@ export default function Home() {
                     repeat: Infinity,
                     repeatType: "reverse",
                   }}
-                  className="inline-block ml-1"
+                  className="hidden md:inline-block ml-1"
                 >
                   👆
                 </motion.span>
@@ -176,6 +183,7 @@ function TipCard({
   description: string;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
 
   // Get icon based on title
   const getIcon = (title: string) => {
@@ -205,13 +213,22 @@ function TipCard({
     }
   })();
 
+  const handleClick = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setClickPosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setIsDialogOpen(true);
+  };
+
   return (
     <>
       <motion.div
         whileHover={{ scale: 1.03, y: -5 }}
         whileTap={{ scale: 0.98 }}
         className="group relative overflow-hidden bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 cursor-pointer"
-        onClick={() => setIsDialogOpen(true)}
+        onClick={handleClick}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-purple-500/5 dark:from-purple-500/10 dark:via-blue-500/10 dark:to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <motion.div
@@ -245,6 +262,7 @@ function TipCard({
         <DialogComponent
           isOpen={isDialogOpen}
           onClose={() => setIsDialogOpen(false)}
+          clickPosition={clickPosition}
         />
       )}
     </>

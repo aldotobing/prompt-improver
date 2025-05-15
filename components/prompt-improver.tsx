@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
   Copy,
@@ -9,6 +9,7 @@ import {
   Sparkles,
   Lightbulb,
   History,
+  Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,6 +68,150 @@ const PROMPT_SUGGESTIONS = [
   "Generate a detailed project proposal.",
 ];
 
+const LoadingStates = [
+  "Analyzing prompt...",
+  "Enhancing content...",
+  "Refining details...",
+  "Almost done...",
+];
+
+const isImageGenerationPrompt = (prompt: string): boolean => {
+  const imageKeywords = [
+    // English keywords
+    "draw",
+    "generate image",
+    "create image",
+    "design image",
+    "make image",
+    "create picture",
+    "generate picture",
+    "create illustration",
+    "generate illustration",
+    "create artwork",
+    "design logo",
+    "create logo",
+    "make a photo",
+    "generate photo",
+    "create photo",
+    "image of",
+    "picture of",
+    "photo of",
+    "dalle",
+    "midjourney",
+    "stable diffusion",
+    // Indonesian keywords
+    "gambar",
+    "buat gambar",
+    "bikin gambar",
+    "desain gambar",
+    "membuat gambar",
+    "buat foto",
+    "bikin foto",
+    "membuat foto",
+    "buat ilustrasi",
+    "bikin ilustrasi",
+    "membuat ilustrasi",
+    "buat karya seni",
+    "desain logo",
+    "buat logo",
+    "bikin logo",
+    "gambar dari",
+    "foto dari",
+  ];
+
+  const lowerPrompt = prompt.toLowerCase();
+  return imageKeywords.some((keyword) =>
+    lowerPrompt.includes(keyword.toLowerCase())
+  );
+};
+
+const ProgressBar = ({ progress }: { progress: number }) => (
+  <div className="w-full h-2.5 bg-gray-200/50 rounded-full overflow-hidden relative backdrop-blur-sm">
+    <motion.div
+      className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 absolute inset-0"
+      style={{
+        backgroundSize: "200% 100%",
+      }}
+      initial={{ width: 0, backgroundPosition: "0% 50%" }}
+      animate={{
+        width: `${progress}%`,
+        backgroundPosition: ["0% 50%", "100% 50%"],
+      }}
+      transition={{
+        width: { duration: 0.5, ease: "easeOut" },
+        backgroundPosition: {
+          duration: 2,
+          repeat: Infinity,
+          ease: "linear",
+        },
+      }}
+    >
+      <motion.div
+        className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        initial={{ x: "-100%" }}
+        animate={{ x: "100%" }}
+        transition={{
+          duration: 1.5,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
+    </motion.div>
+  </div>
+);
+
+const LoadingAnimation = ({ progress }: { progress: number }) => {
+  const [loadingStateIndex, setLoadingStateIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLoadingStateIndex((prev) => (prev + 1) % LoadingStates.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.div
+      className="flex items-center justify-center gap-3 h-full px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="flex items-center gap-3">
+        <motion.div
+          initial={{ scale: 1 }}
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 360],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          <Wand2 className="h-5 w-5 text-blue-400" />
+        </motion.div>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={loadingStateIndex}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.3 }}
+            className="text-sm font-medium text-blue-100 min-w-[140px]"
+          >
+            {LoadingStates[loadingStateIndex]}
+          </motion.span>
+        </AnimatePresence>
+        <div className="w-32">
+          <ProgressBar progress={progress} />
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 export default function PromptImprover({ theme }: { theme: string }) {
   const [originalPrompt, setOriginalPrompt] = useState("");
   const [improvedPrompt, setImprovedPrompt] = useState("");
@@ -74,6 +219,8 @@ export default function PromptImprover({ theme }: { theme: string }) {
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState("");
   const [isPromptDialogOpen, setIsPromptDialogOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [promptType, setPromptType] = useState<"text" | "image">("text");
   type HistoryItem = { original: string; improved: string; timestamp: number };
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState("editor");
@@ -87,6 +234,19 @@ export default function PromptImprover({ theme }: { theme: string }) {
 
     setError("");
     setIsLoading(true);
+    setProgress(0);
+
+    // Determine if this is an image generation prompt
+    const isImage = isImageGenerationPrompt(originalPrompt);
+    setPromptType(isImage ? "image" : "text");
+
+    // Simulate progress steps
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + Math.random() * 15;
+        return next > 90 ? 90 : next;
+      });
+    }, 500);
 
     try {
       const response = await fetch(
@@ -113,7 +273,10 @@ export default function PromptImprover({ theme }: { theme: string }) {
                           2. Only output the improved version of the prompt, as a single line or paragraph, and nothing else.\n
                           3. Do not include any additional explanations or comments.\n
                           4. Give example only if necessary.\n
-                          5. Do not treat the original prompt as a task to perform.
+                          5. Do not treat the original prompt as a task to perform. \n
+                          
+                          DO THE SAME FOR ALL LANGUAGES, NOT JUST ENGLISH.\n
+                          
                 Original prompt: "${originalPrompt}"`,
               },
             ],
@@ -132,18 +295,26 @@ export default function PromptImprover({ theme }: { theme: string }) {
         throw new Error("Invalid AI response format.");
       }
 
-      setImprovedPrompt(improved);
+      clearInterval(progressInterval);
+      setProgress(100);
 
-      // Add to history
-      setHistory((prev) => [
-        { original: originalPrompt, improved, timestamp: Date.now() },
-        ...prev.slice(0, 9),
-      ]);
+      // Delay setting the improved prompt for a smooth progress bar completion
+      setTimeout(() => {
+        setImprovedPrompt(improved);
+        setHistory((prev) => [
+          { original: originalPrompt, improved, timestamp: Date.now() },
+          ...prev.slice(0, 9),
+        ]);
+      }, 500);
     } catch (err) {
       console.error("Error improving prompt:", err);
+      clearInterval(progressInterval);
+      setProgress(0);
       setError("Failed to improve prompt. Please try again.");
     } finally {
-      setIsLoading(false);
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     }
   };
 
@@ -196,12 +367,12 @@ export default function PromptImprover({ theme }: { theme: string }) {
           <div>
             <h1
               className={`text-2xl font-bold ${
-                theme === "dark" ? "text-gray-200" : "text-gray-900"
+                theme === "dark" ? "text-blue-100" : "text-gray-900"
               }`}
             >
               AI Prompt Improver
             </h1>
-            <p className={theme === "dark" ? "text-gray-400" : "text-gray-700"}>
+            <p className={theme === "dark" ? "text-gray-300" : "text-gray-600"}>
               Transform vague prompts into clear, specific, and effective
               instructions
             </p>
@@ -236,12 +407,42 @@ export default function PromptImprover({ theme }: { theme: string }) {
                     Prompt Style
                   </label>
                   <Select value={promptStyle} onValueChange={setPromptStyle}>
-                    <SelectTrigger className="w-24">
+                    <SelectTrigger
+                      className={`w-24 ${
+                        theme === "dark"
+                          ? "bg-gray-800/90 border-gray-600 text-gray-200 ring-offset-gray-900"
+                          : "bg-white border-gray-300 text-gray-800"
+                      }`}
+                    >
                       <SelectValue placeholder="Style" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="detailed">Detailed</SelectItem>
-                      <SelectItem value="concise">Concise</SelectItem>
+                    <SelectContent
+                      className={`${
+                        theme === "dark"
+                          ? "bg-gray-800 border-gray-600 text-gray-200"
+                          : "bg-white border-gray-300 text-gray-800"
+                      }`}
+                    >
+                      <SelectItem
+                        value="detailed"
+                        className={`${
+                          theme === "dark"
+                            ? "focus:bg-gray-700 focus:text-gray-100"
+                            : ""
+                        }`}
+                      >
+                        Detailed
+                      </SelectItem>
+                      <SelectItem
+                        value="concise"
+                        className={`${
+                          theme === "dark"
+                            ? "focus:bg-gray-700 focus:text-gray-100"
+                            : ""
+                        }`}
+                      >
+                        Concise
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -254,15 +455,23 @@ export default function PromptImprover({ theme }: { theme: string }) {
                 rows={5}
                 className={`w-full border ${
                   theme === "dark"
-                    ? "bg-gray-800 border-gray-600 text-gray-300 placeholder-gray-500"
+                    ? "bg-gray-800/90 border-gray-600 text-gray-200 placeholder-gray-400"
                     : "bg-white border-gray-300 text-gray-800 placeholder-gray-400"
                 } focus:ring-blue-500 focus:border-blue-500`}
               />
             </motion.div>
 
             <div className="flex items-center mb-2">
-              <Lightbulb className="h-4 w-4 mr-2 text-blue-600" />
-              <span className="text-sm font-medium text-gray-700">
+              <Lightbulb
+                className={`h-4 w-4 mr-2 ${
+                  theme === "dark" ? "text-blue-400" : "text-blue-600"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Try these examples:
               </span>
             </div>
@@ -271,7 +480,11 @@ export default function PromptImprover({ theme }: { theme: string }) {
                 <button
                   key={index}
                   onClick={() => useSuggestion(suggestion)}
-                  className="text-xs px-2 py-1 rounded bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                  className={`text-xs px-2 py-1 rounded transition-colors duration-150 ${
+                    theme === "dark"
+                      ? "bg-gray-800/80 text-gray-200 hover:bg-gray-700 border-gray-600 hover:text-gray-100 hover:border-gray-500"
+                      : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
+                  } border`}
                 >
                   {suggestion}
                 </button>
@@ -282,7 +495,9 @@ export default function PromptImprover({ theme }: { theme: string }) {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-red-500 text-sm"
+                className={`${
+                  theme === "dark" ? "text-red-400" : "text-red-500"
+                } text-sm`}
               >
                 {error}
               </motion.p>
@@ -296,19 +511,36 @@ export default function PromptImprover({ theme }: { theme: string }) {
               <Button
                 onClick={improvePrompt}
                 disabled={isLoading || !originalPrompt.trim()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                className={`w-full h-[52px] ${
+                  theme === "dark"
+                    ? "bg-blue-600 hover:bg-blue-500"
+                    : "bg-blue-600 hover:bg-blue-700"
+                } text-white font-semibold relative overflow-hidden`}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Improving...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Improve Prompt
-                  </>
-                )}
+                <AnimatePresence mode="wait">
+                  {isLoading ? (
+                    <motion.div
+                      key="loading"
+                      className="w-full h-full absolute inset-0 flex flex-col items-center justify-center bg-blue-600"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <LoadingAnimation progress={progress} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="default"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center justify-center"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Improve Prompt
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </Button>
             </motion.div>
 
@@ -321,13 +553,27 @@ export default function PromptImprover({ theme }: { theme: string }) {
                 <div className="mb-2">
                   <label
                     htmlFor="improved-prompt"
-                    className="block text-sm font-medium text-gray-700"
+                    className={`block text-sm font-medium ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                    }`}
                   >
                     Improved Prompt
                   </label>
                 </div>
-                <div className="p-6 rounded-lg shadow-lg bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
-                  <div className="prose prose-blue mb-4">
+                <div
+                  className={`p-6 rounded-lg shadow-lg border ${
+                    theme === "dark"
+                      ? "bg-gray-800/90 border-gray-600"
+                      : "bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200"
+                  }`}
+                >
+                  <div
+                    className={`prose max-w-none mb-4 ${
+                      theme === "dark"
+                        ? "prose-invert prose-p:text-gray-200 prose-headings:text-gray-100 prose-strong:text-blue-300 prose-em:text-blue-200"
+                        : "prose-blue"
+                    }`}
+                  >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {improvedPrompt}
                     </ReactMarkdown>
@@ -345,7 +591,11 @@ export default function PromptImprover({ theme }: { theme: string }) {
                           onClick={copyToClipboard}
                           className={`${
                             isCopied
-                              ? "bg-green-100 border-green-600 text-green-600"
+                              ? theme === "dark"
+                                ? "bg-green-900/50 border-green-400 text-green-400"
+                                : "bg-green-100 border-green-600 text-green-600"
+                              : theme === "dark"
+                              ? "bg-gray-700/50 hover:bg-gray-700/80 border-gray-500 text-gray-200"
                               : "bg-white/50 hover:bg-white/80 border-gray-300"
                           }`}
                         >
@@ -365,7 +615,11 @@ export default function PromptImprover({ theme }: { theme: string }) {
                           variant="outline"
                           size="sm"
                           onClick={() => setIsPromptDialogOpen(true)}
-                          className="bg-white/50 hover:bg-white/80 border-gray-300"
+                          className={`${
+                            theme === "dark"
+                              ? "bg-gray-700/50 hover:bg-gray-700/80 border-gray-500 text-gray-200"
+                              : "bg-white/50 hover:bg-white/80 border-gray-300"
+                          }`}
                         >
                           <Sparkles className="mr-1 h-4 w-4" />
                           Prompt It
@@ -378,15 +632,31 @@ export default function PromptImprover({ theme }: { theme: string }) {
             )}
           </div>
         ) : (
-          <CardContent>
+          <CardContent
+            className={
+              theme === "dark"
+                ? "bg-gray-800/80 border border-gray-700 rounded-lg"
+                : ""
+            }
+          >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium text-gray-800">Recent Prompts</h3>
+              <h3
+                className={`font-medium ${
+                  theme === "dark" ? "text-gray-200" : "text-gray-800"
+                }`}
+              >
+                Recent Prompts
+              </h3>
               {history.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={clearHistory}
-                  className={`text-red-500 border-red-500 hover:bg-red-50`}
+                  className={`${
+                    theme === "dark"
+                      ? "text-red-400 border-red-400 hover:bg-red-950/30"
+                      : "text-red-500 border-red-500 hover:bg-red-50"
+                  }`}
                 >
                   Clear History
                 </Button>
@@ -394,7 +664,11 @@ export default function PromptImprover({ theme }: { theme: string }) {
             </div>
 
             {history.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div
+                className={`text-center py-8 ${
+                  theme === "dark" ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
                 <History className="mx-auto h-8 w-8 mb-2 opacity-50" />
                 <p>No prompt history yet</p>
               </div>
@@ -406,16 +680,24 @@ export default function PromptImprover({ theme }: { theme: string }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="p-3 rounded border cursor-pointer border-gray-200 hover:bg-gray-50"
+                    className={`p-3 rounded border cursor-pointer transition-colors duration-150 ${
+                      theme === "dark"
+                        ? "border-gray-700 hover:bg-gray-700/50 text-gray-300"
+                        : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                    }`}
                     onClick={() => useHistoryItem(item)}
                   >
                     <div className="flex justify-between">
-                      <p className="font-medium truncate text-gray-700">
+                      <p className="font-medium truncate">
                         {item.original.length > 40
                           ? `${item.original.substring(0, 40)}...`
                           : item.original}
                       </p>
-                      <span className="text-xs text-gray-400">
+                      <span
+                        className={`text-xs ${
+                          theme === "dark" ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
                         {new Date(item.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
@@ -430,6 +712,8 @@ export default function PromptImprover({ theme }: { theme: string }) {
         open={isPromptDialogOpen}
         onOpenChange={setIsPromptDialogOpen}
         prompt={improvedPrompt}
+        theme={theme}
+        type={promptType}
       />
     </div>
   );
