@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     url: "https://prompt.aldotobing.online",
     images: [
       {
-        url: "/assets/img/llama.png",
+        url: "/assets/img/prompt.png",
         alt: "Prompt Improver Preview",
       },
     ],
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
       "Transform your AI interactions with optimized prompts for clarity, specificity, and context.",
     images: [
       {
-        url: "/assets/img/llama.png",
+        url: "/assets/img/prompt.png",
         alt: "Prompt Improver Preview",
       },
     ],

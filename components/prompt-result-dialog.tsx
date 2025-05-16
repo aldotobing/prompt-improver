@@ -40,17 +40,23 @@ export function PromptResultDialog({
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [wordCount, setWordCount] = useState(0);
+  // New state to track which API provided the result
+  const [usedApiProvider, setUsedApiProvider] = useState<
+    "deepseek" | "cloudflare_text" | "cloudflare_image" | null
+  >(null);
 
   const generateResult = async () => {
     let additionalString =
-      type === "image"
-        ? "\nPlease enhance this prompt to work better with image generation AI models like DALL-E, Midjourney, or Stable Diffusion. Make it more descriptive and specific, including details about style, lighting, perspective, and mood where relevant. Format the response in Markdown.\n"
-        : "\nResponse in a proper Markdown format.\n";
+      "\nIf the prompt is asking for a story, return a third-person narrative.\n" +
+      "For all other prompts, respond directly in first-person point of view.\n" +
+      "Only return the response. Do not include comments, explanations, or unnecessary statements.\n";
+
     setIsLoading(true);
     setError("");
     setProgress(0);
+    setUsedApiProvider(null); // Reset API provider at the start of generation
 
-    // Start progress simulation
+    // Progress simulation
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) {
@@ -60,6 +66,7 @@ export function PromptResultDialog({
         return prev + Math.random() * 15;
       });
     }, 500);
+
     try {
       if (type === "image") {
         const response = await fetch(
@@ -80,43 +87,76 @@ export function PromptResultDialog({
         const blob = await response.blob();
         const imageUrl = URL.createObjectURL(blob);
         setResult(`![Generated Image](${imageUrl})`);
+        setUsedApiProvider("cloudflare_image"); // Set provider for image
         return;
       }
 
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || "",
+      // Step 1: coba DeepSeek API
+      let deepseekResponse = await fetch(
+        process.env.NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL || "",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            //guide: true,
-            messages: [
-              {
-                role: "user",
-                content: prompt,
-              },
-            ],
-          }),
+          body: JSON.stringify({ prompt: prompt + additionalString }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (!deepseekResponse.ok) {
+        // kalau gagal, fallback ke Cloudflare AI
+        throw new Error("DeepSeek API failed, fallback");
       }
 
-      const data = await response.json();
-      const generatedResult = data?.[0]?.response?.response?.trim();
-
-      if (!generatedResult) {
-        throw new Error("Invalid AI response format.");
+      let deepseekData = await deepseekResponse.json();
+      if (!deepseekData?.text) {
+        throw new Error("DeepSeek returned no text, fallback");
       }
 
       setProgress(100);
-      setResult(generatedResult);
+      setResult(deepseekData.text);
+      setUsedApiProvider("deepseek"); // Set provider for DeepSeek
     } catch (err) {
-      setError("Failed to generate result. Please try again.");
+      // Step 2: fallback ke Cloudflare AI
+      try {
+        const cfResponse = await fetch(
+          process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || "",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messages: [
+                {
+                  role: "user",
+                  content: prompt + additionalString,
+                },
+              ],
+            }),
+          }
+        );
+
+        if (!cfResponse.ok) {
+          throw new Error(`Cloudflare AI error: ${cfResponse.status}`);
+        }
+
+        const cfData = await cfResponse.json();
+        const generatedResult = cfData?.[0]?.response?.response?.trim();
+
+        if (!generatedResult) {
+          throw new Error("Invalid Cloudflare AI response");
+        }
+
+        setProgress(100);
+        setResult(generatedResult);
+        setUsedApiProvider("cloudflare_text"); // Set provider for Cloudflare text AI
+      } catch (fallbackErr) {
+        setError(
+          "Failed to generate result with both DeepSeek and Cloudflare AI."
+        );
+        // usedApiProvider remains null if both fail
+      }
     } finally {
       clearInterval(progressInterval);
       setIsLoading(false);
@@ -125,18 +165,20 @@ export function PromptResultDialog({
 
   // Update word count when result changes
   useEffect(() => {
-    if (result) {
+    if (result && type === "text") {
+      // Only calculate for text type
       setWordCount(result.split(/\s+/).filter(Boolean).length);
     } else {
       setWordCount(0);
     }
-  }, [result]);
+  }, [result, type]); // Added type to dependency array
 
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
       setResult("");
       setError("");
+      setUsedApiProvider(null); // Reset API provider when dialog closes
     }
   }, [open]);
 
@@ -144,7 +186,8 @@ export function PromptResultDialog({
   useEffect(() => {
     if (open && prompt && !result && !isLoading) {
       generateResult();
-    }  }, [open, prompt]);
+    }
+  }, [open, prompt]); // Removed result and isLoading from deps to avoid re-triggering on internal state change if needed, kept original for now
 
   const renderContent = () => {
     if (type === "image") {
@@ -276,6 +319,7 @@ export function PromptResultDialog({
                   exit={{ opacity: 0, y: -10 }}
                   className="flex flex-col items-center justify-center py-12"
                 >
+                  {/* Loading UI remains the same */}
                   <div className="space-y-6 w-full max-w-md mx-auto">
                     <div className="relative">
                       <div
@@ -347,6 +391,7 @@ export function PromptResultDialog({
                   exit={{ opacity: 0, y: -10 }}
                   className="text-center py-8"
                 >
+                  {/* Error UI remains the same */}
                   <div
                     className={`flex flex-col items-center space-y-4 ${
                       theme === "dark" ? "text-gray-300" : "text-gray-600"
@@ -402,41 +447,54 @@ export function PromptResultDialog({
                   className="space-y-6"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p
-                      className={`text-sm ${
-                        theme === "dark" ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      {result.split(/\s+/).filter(Boolean).length} words
-                    </p>
+                    {
+                      type === "text" && result ? (
+                        <p
+                          className={`text-sm ${
+                            theme === "dark" ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          {wordCount} words
+                        </p>
+                      ) : (
+                        <div />
+                      ) /* Placeholder to keep layout if CopyButton is to the right */
+                    }
                     <CopyButton text={result} theme={theme} />
                   </div>
                   {renderContent()}
-                  <div
-                    className={`flex items-center gap-2 pt-4 border-t ${
-                      theme === "dark" ? "border-gray-700" : "border-gray-100"
-                    }`}
-                  >
+                  {/* MODIFIED ATTRIBUTION SECTION */}
+                  {!isLoading && result && usedApiProvider && (
                     <div
-                      className={`p-2 rounded-full ${
-                        theme === "dark" ? "bg-blue-900/20" : "bg-blue-50"
+                      className={`flex items-center gap-2 pt-4 border-t ${
+                        theme === "dark" ? "border-gray-700" : "border-gray-100"
                       }`}
                     >
-                      <img
-                        src="/assets/img/llama.png"
-                        alt="LLaMA Logo"
-                        className="w-5 h-5 object-contain"
-                      />
+                      <div
+                        className={`p-2 rounded-full ${
+                          theme === "dark" ? "bg-blue-900/20" : "bg-blue-50"
+                        }`}
+                      >
+                        <img
+                          src="/assets/img/ai.png"
+                          alt="LLaMA Logo"
+                          className="w-5 h-5 object-contain"
+                        />
+                      </div>
+                      <span
+                        className={`text-xs ${
+                          theme === "dark" ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {usedApiProvider === "deepseek" &&
+                          "Generated using DeepSeek-V3 AI."}
+                        {usedApiProvider === "cloudflare_text" &&
+                          "Generated using CF Meta LLaMA (llama-4-scout-17b-16e-instruct) for testing purposes."}
+                        {usedApiProvider === "cloudflare_image" &&
+                          "Image generated using CF /stable-diffusion-xl-base-1.0."}
+                      </span>
                     </div>
-                    <span
-                      className={`text-xs ${
-                        theme === "dark" ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      Generated using Meta LLaMA
-                      (llama-4-scout-17b-16e-instruct) for testing purposes.
-                    </span>
-                  </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
