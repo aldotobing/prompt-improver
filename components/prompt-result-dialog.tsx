@@ -117,7 +117,7 @@ export function PromptResultDialog({
       "- Structure with an intro, body, and closing.\n" +
       "- Use a formal tone unless stated otherwise.\n\n" +
       "**FORMATTING:**\n" +
-      //"- Tables should be in Markdown if needed.\n" +
+      "- Include tables if needed.\n" +
       "- Use lists where appropriate.\n";
 
     setIsLoading(true);
