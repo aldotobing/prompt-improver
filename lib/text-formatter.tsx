@@ -1,4 +1,5 @@
 import React, { JSX } from "react";
+import CodeBlock from "./components/CodeBlock";
 
 export const renderFormattedResponse = (text: string) => {
   const lines = text.split("\n");
@@ -107,11 +108,13 @@ export const renderFormattedResponse = (text: string) => {
       } else {
         inCodeBlock = false;
         rendered.push(
-          <pre key={`code-${i}`}>
-            <code className={`language-${codeBlockLang}`}>
-              {codeBuffer.join("\n")}
-            </code>
-          </pre>
+          rendered.push(
+  <CodeBlock
+    key={`code-${i}`}
+    code={codeBuffer.join("\n")}
+    language={codeBlockLang}
+  />
+);
         );
         codeBuffer = [];
         codeBlockLang = "";
