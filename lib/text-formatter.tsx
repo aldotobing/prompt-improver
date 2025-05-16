@@ -101,30 +101,25 @@ export const renderFormattedResponse = (text: string) => {
     const line = rawLine.trim();
 
     // Multiline code block handling
-    if (line.startsWith("```")) {
-      if (!inCodeBlock) {
-        inCodeBlock = true;
-        codeBlockLang = line.slice(3).trim();
-      } else {
-        inCodeBlock = false;
-        rendered.push(
-          rendered.push(
-  <CodeBlock
-    key={`code-${i}`}
-    code={codeBuffer.join("\n")}
-    language={codeBlockLang}
-  />
-        );
-        codeBuffer = [];
-        codeBlockLang = "";
-      }
-      continue;
-    }
-
-    if (inCodeBlock) {
-      codeBuffer.push(rawLine);
-      continue;
-    }
+    
+if (line.startsWith("```")) {
+  if (!inCodeBlock) {
+    inCodeBlock = true;
+    codeBlockLang = line.slice(3).trim();
+  } else {
+    inCodeBlock = false;
+    rendered.push(
+      <CodeBlock
+        key={`code-${i}`}
+        code={codeBuffer.join("\n")}
+        language={codeBlockLang}
+      />
+    );
+    codeBuffer = [];
+    codeBlockLang = "";
+  }
+  continue;
+}
 
     // Table check
     if (line.startsWith("|") && isTableDivider(lines[i + 1]?.trim() || "")) {
