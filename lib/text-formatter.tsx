@@ -1,5 +1,5 @@
 import React, { JSX } from "react";
-import CodeBlock from "./components/CodeBlock";
+import CodeBlock from "../components/CodeBlock";
 
 export const renderFormattedResponse = (text: string) => {
   const lines = text.split("\n");
