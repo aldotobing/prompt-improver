@@ -114,7 +114,6 @@ export const renderFormattedResponse = (text: string) => {
     code={codeBuffer.join("\n")}
     language={codeBlockLang}
   />
-);
         );
         codeBuffer = [];
         codeBlockLang = "";
