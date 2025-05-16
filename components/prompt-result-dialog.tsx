@@ -98,9 +98,11 @@ export function PromptResultDialog({
 
   const generateResult = async () => {
     let additionalString =
-      "\nIf the prompt is asking for a story, return a third-person narrative.\n" +
+      "\nNOTES:\n" +
+      "If the prompt is asking for a story, return a third-person narrative.\n" +
       "If the prompt is asking for bussiness plan or other planning, respond directly in first-person narrative.\n" +
-      "Add detailed table if necessary.\n" +
+      "Add detailed table or graph if necessary.\n" +
+      "If the prompt is asking for generating letter, respond directly in first-person narrative.\n" +
       "Only return the response. Do not include comments, explanations, or unnecessary statements.\n";
 
     setIsLoading(true);
