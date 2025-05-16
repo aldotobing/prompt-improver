@@ -98,12 +98,27 @@ export function PromptResultDialog({
 
   const generateResult = async () => {
     let additionalString =
-      "\nNOTES:\n" +
-      "If the prompt is asking for a story, return a third-person narrative.\n" +
-      "If the prompt is asking for bussiness plan or other planning, respond directly in first-person narrative.\n" +
-      "Add detailed table or graph if necessary.\n" +
-      "If the prompt is asking for generating letter, respond directly in first-person narrative.\n" +
-      "Only return the response. Do not include comments, explanations, or unnecessary statements.\n";
+      "\n\n" +
+      "**GENERAL RULES:**\n" +
+      "- Respond directly to the prompt.\n" +
+      "- Do not include explanations, extra commentary, or formatting notes.\n" +
+      "- Use clear, natural language, and maintain professionalism when appropriate.\n\n" +
+      "**STORY:**\n" +
+      "- If the prompt asks for a story, respond in a third-person narrative.\n" +
+      "- Write with emotional depth, character development, and plot.\n\n" +
+      "**BUSINESS PLAN / PLANNING:**\n" +
+      "- If the prompt asks for a business plan or strategic document, respond in first-person perspective (e.g., “We plan to…”).\n" +
+      "- Use headings, subheadings, and structured layout when necessary.\n" +
+      "- Include charts, tables, or bullet points when helpful.\n\n" +
+      "**LETTER:**\n" +
+      "- If the prompt asks to generate a letter, write in first-person narrative (“I” or “We”).\n" +
+      "- **Do not include placeholder blocks** like [Your Name], [Date], etc.\n" +
+      "- Start directly from the salutation (e.g., “Dear Sir or Madam,”).\n" +
+      "- Structure with an intro, body, and closing.\n" +
+      "- Use a formal tone unless stated otherwise.\n\n" +
+      "**FORMATTING:**\n" +
+      //"- Tables should be in Markdown if needed.\n" +
+      "- Use lists where appropriate.\n";
 
     setIsLoading(true);
     setError("");
