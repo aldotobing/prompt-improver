@@ -547,7 +547,7 @@ export function PromptResultDialog({
                         }`}
                       >
                         <img
-                          src="/assets/img/llama.png"
+                          src="/assets/img/ai.png"
                           alt="LLaMA Logo"
                           className="w-5 h-5 object-contain"
                         />
