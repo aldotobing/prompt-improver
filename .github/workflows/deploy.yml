@@ -26,6 +26,7 @@ jobs:
         env:
           NEXT_PUBLIC_CLOUDFLARE_AI_URL: ${{ secrets.NEXT_PUBLIC_CLOUDFLARE_AI_URL }}
           NEXT_PUBLIC_CLOUDFLARE_AI_IMG_URL: ${{ secrets.NEXT_PUBLIC_CLOUDFLARE_AI_IMG_URL }}
+          NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL: ${{ secrets.NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL }}
           NODE_ENV: production
 
       - name: Create CNAME file
