@@ -14,11 +14,21 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CopyButton } from "./ui/copy-button";
 import { Progress } from "./ui/progress";
 import { renderFormattedResponse } from "@/lib/text-formatter";
+
+import {
+  INITIAL_MESSAGES_TEXT,
+  INITIAL_MESSAGES_IMAGE,
+  IMAGE_GENERATION_MESSAGES,
+  DEEPSEEK_MESSAGES,
+  CLOUDFLARE_LLAMA_MESSAGES,
+  DEFAULT_INITIAL_MESSAGE_TEXT,
+  DEFAULT_INITIAL_MESSAGE_IMAGE,
+} from "@/lib/loading-messages";
 
 interface PromptResultDialogProps {
   open: boolean;
@@ -40,23 +50,69 @@ export function PromptResultDialog({
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [wordCount, setWordCount] = useState(0);
-  // New state to track which API provided the result
   const [usedApiProvider, setUsedApiProvider] = useState<
     "deepseek" | "cloudflare_text" | "cloudflare_image" | null
   >(null);
 
+  const [displayedLoadingMessage, setDisplayedLoadingMessage] = useState(
+    type === "image"
+      ? DEFAULT_INITIAL_MESSAGE_IMAGE
+      : DEFAULT_INITIAL_MESSAGE_TEXT
+  );
+  const animationIntervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  const currentMessageArrayIndexRef = useRef(0);
+
+  const stopLoadingAnimation = () => {
+    if (animationIntervalIdRef.current) {
+      clearInterval(animationIntervalIdRef.current);
+      animationIntervalIdRef.current = null;
+    }
+  };
+
+  const startLoadingAnimation = (messages: string[]) => {
+    stopLoadingAnimation(); // Clear any existing animation
+
+    if (!messages || messages.length === 0) {
+      setDisplayedLoadingMessage(
+        type === "image" ? "Generating image..." : "Generating text..."
+      );
+      return;
+    }
+
+    currentMessageArrayIndexRef.current = 0;
+    setDisplayedLoadingMessage(messages[0]);
+
+    if (messages.length > 1) {
+      animationIntervalIdRef.current = setInterval(() => {
+        const nextIndex = currentMessageArrayIndexRef.current + 1;
+
+        if (nextIndex < messages.length) {
+          currentMessageArrayIndexRef.current = nextIndex;
+          setDisplayedLoadingMessage(messages[nextIndex]);
+        } else {
+          stopLoadingAnimation();
+        }
+      }, 2000);
+    }
+  };
+
   const generateResult = async () => {
     let additionalString =
       "\nIf the prompt is asking for a story, return a third-person narrative.\n" +
-      "For all other prompts, respond directly in first-person point of view.\n" +
+      "If the prompt is asking for bussiness plan or other planning, respond directly in first-person narrative.\n" +
+      "Add detailed table if necessary.\n" +
       "Only return the response. Do not include comments, explanations, or unnecessary statements.\n";
 
     setIsLoading(true);
     setError("");
     setProgress(0);
-    setUsedApiProvider(null); // Reset API provider at the start of generation
+    setUsedApiProvider(null);
 
-    // Progress simulation
+    // Start initial loading animation
+    startLoadingAnimation(
+      type === "image" ? INITIAL_MESSAGES_IMAGE : INITIAL_MESSAGES_TEXT
+    );
+
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) {
@@ -69,127 +125,122 @@ export function PromptResultDialog({
 
     try {
       if (type === "image") {
+        startLoadingAnimation(IMAGE_GENERATION_MESSAGES);
         const response = await fetch(
           process.env.NEXT_PUBLIC_CLOUDFLARE_AI_IMG_URL || "",
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prompt }),
           }
         );
-
-        if (!response.ok) {
-          throw new Error("Image generation failed");
-        }
-
+        if (!response.ok) throw new Error("Image generation failed");
         const blob = await response.blob();
         const imageUrl = URL.createObjectURL(blob);
         setResult(`![Generated Image](${imageUrl})`);
-        setUsedApiProvider("cloudflare_image"); // Set provider for image
+        setUsedApiProvider("cloudflare_image");
         return;
       }
 
-      // Step 1: coba DeepSeek API
+      startLoadingAnimation(DEEPSEEK_MESSAGES);
       let deepseekResponse = await fetch(
         process.env.NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL || "",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt: prompt + additionalString }),
         }
       );
-
-      if (!deepseekResponse.ok) {
-        // kalau gagal, fallback ke Cloudflare AI
+      if (!deepseekResponse.ok)
         throw new Error("DeepSeek API failed, fallback");
-      }
-
       let deepseekData = await deepseekResponse.json();
-      if (!deepseekData?.text) {
+      if (!deepseekData?.text)
         throw new Error("DeepSeek returned no text, fallback");
-      }
-
-      setProgress(100);
       setResult(deepseekData.text);
-      setUsedApiProvider("deepseek"); // Set provider for DeepSeek
+      setUsedApiProvider("deepseek");
     } catch (err) {
-      // Step 2: fallback ke Cloudflare AI
-      try {
-        const cfResponse = await fetch(
-          process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || "",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              messages: [
-                {
-                  role: "user",
-                  content: prompt + additionalString,
-                },
-              ],
-            }),
-          }
-        );
-
-        if (!cfResponse.ok) {
-          throw new Error(`Cloudflare AI error: ${cfResponse.status}`);
+      if (type === "text") {
+        // Fallback for text generation
+        try {
+          startLoadingAnimation(CLOUDFLARE_LLAMA_MESSAGES);
+          const cfResponse = await fetch(
+            process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || "",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                messages: [
+                  { role: "user", content: prompt + additionalString },
+                ],
+              }),
+            }
+          );
+          if (!cfResponse.ok)
+            throw new Error(`Cloudflare AI error: ${cfResponse.status}`);
+          const cfData = await cfResponse.json();
+          const generatedResult = cfData?.[0]?.response?.response?.trim();
+          if (!generatedResult)
+            throw new Error("Invalid Cloudflare AI response");
+          setResult(generatedResult);
+          setUsedApiProvider("cloudflare_text");
+        } catch (fallbackErr) {
+          setError(
+            "Failed to generate result with both DeepSeek and Cloudflare AI."
+          );
         }
-
-        const cfData = await cfResponse.json();
-        const generatedResult = cfData?.[0]?.response?.response?.trim();
-
-        if (!generatedResult) {
-          throw new Error("Invalid Cloudflare AI response");
-        }
-
-        setProgress(100);
-        setResult(generatedResult);
-        setUsedApiProvider("cloudflare_text"); // Set provider for Cloudflare text AI
-      } catch (fallbackErr) {
+      } else {
+        // Image generation or other errors
         setError(
-          "Failed to generate result with both DeepSeek and Cloudflare AI."
+          err instanceof Error
+            ? err.message
+            : "An unexpected error occurred during generation."
         );
-        // usedApiProvider remains null if both fail
       }
     } finally {
       clearInterval(progressInterval);
+      stopLoadingAnimation();
       setIsLoading(false);
+      setProgress(100); // Ensure progress is 100 if not already
     }
   };
 
-  // Update word count when result changes
   useEffect(() => {
     if (result && type === "text") {
-      // Only calculate for text type
       setWordCount(result.split(/\s+/).filter(Boolean).length);
     } else {
       setWordCount(0);
     }
-  }, [result, type]); // Added type to dependency array
+  }, [result, type]);
 
-  // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
       setResult("");
       setError("");
-      setUsedApiProvider(null); // Reset API provider when dialog closes
+      setUsedApiProvider(null);
+      stopLoadingAnimation();
+      setDisplayedLoadingMessage(
+        type === "image"
+          ? DEFAULT_INITIAL_MESSAGE_IMAGE
+          : DEFAULT_INITIAL_MESSAGE_TEXT
+      );
+      setProgress(0); // Reset progress
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, type]); // type added for correct message reset
 
-  // Generate result when dialog opens
   useEffect(() => {
     if (open && prompt && !result && !isLoading) {
+      // Set initial message correctly before starting animation in generateResult
+      setDisplayedLoadingMessage(
+        type === "image" ? INITIAL_MESSAGES_IMAGE[0] : INITIAL_MESSAGES_TEXT[0]
+      );
       generateResult();
     }
-  }, [open, prompt]); // Removed result and isLoading from deps to avoid re-triggering on internal state change if needed, kept original for now
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prompt, type]); // type added to re-trigger if type changes when closed then opened
 
   const renderContent = () => {
+    // ... (renderContent remains the same)
     if (type === "image") {
       const imageMatch = result.match(/!\[.*?\]\((.*?)\)/);
       const imageUrl = imageMatch ? imageMatch[1] : null;
@@ -221,7 +272,8 @@ export function PromptResultDialog({
                   theme === "dark" ? "text-gray-400" : "text-gray-500"
                 }`}
               >
-                Image is being generated...
+                Image is being generated...{" "}
+                {/* This shows if result is empty but not loading, e.g. during brief moments */}
               </div>
             )}
           </div>
@@ -251,6 +303,7 @@ export function PromptResultDialog({
         }`}
       >
         <DialogHeader>
+          {/* ... (DialogHeader remains the same) */}
           <DialogTitle
             className={`text-2xl font-bold tracking-tight ${
               theme === "dark"
@@ -270,6 +323,7 @@ export function PromptResultDialog({
         </DialogHeader>
 
         <div className="space-y-6 mt-6">
+          {/* ... (Improved Prompt section remains the same) */}
           <div
             className={`p-6 rounded-2xl border transition-all duration-200 ${
               theme === "dark"
@@ -304,6 +358,7 @@ export function PromptResultDialog({
               {prompt}
             </p>
           </div>
+
           <div
             className={`p-6 rounded-2xl border transition-all duration-200 ${
               theme === "dark"
@@ -319,22 +374,24 @@ export function PromptResultDialog({
                   exit={{ opacity: 0, y: -10 }}
                   className="flex flex-col items-center justify-center py-12"
                 >
-                  {/* Loading UI remains the same */}
-                  <div className="space-y-6 w-full max-w-md mx-auto">
+                  <div className="space-y-6 w-full max-w-md mx-auto text-center">
+                    {" "}
+                    {/* Centered text */}
                     <div className="relative">
                       <div
-                        className={`absolute inset-0 rounded-full blur-xl animate-pulse ${
+                        className={`absolute inset-0 rounded-full blur-xl ${
+                          // Removed animate-pulse from here
                           theme === "dark" ? "bg-blue-900/20" : "bg-blue-100/50"
                         }`}
                       ></div>
                       <div
-                        className={`relative flex items-center gap-3 px-6 py-3 rounded-full border shadow-sm ${
+                        className={`relative flex items-center justify-center gap-3 px-6 py-3 rounded-full border shadow-sm ${
+                          // Added justify-center
                           theme === "dark"
                             ? "bg-gray-800/90 backdrop-blur-sm border-gray-600"
                             : "bg-white/80 backdrop-blur-sm border-gray-100"
                         }`}
                       >
-                        {" "}
                         <div className="flex items-center gap-2">
                           <Loader2
                             className={`h-5 w-5 animate-spin ${
@@ -353,20 +410,19 @@ export function PromptResultDialog({
                             />
                           )}
                         </div>
+                        {/* MODIFIED: Use displayedLoadingMessage state here */}
                         <span
-                          className={`animate-pulse ${
+                          className={`text-sm min-h-[1.25em] ${
+                            // Added min-h for layout stability
                             theme === "dark"
                               ? "text-gray-300 font-medium"
                               : "text-gray-600 font-medium"
                           }`}
                         >
-                          {type === "image"
-                            ? "Generating image..."
-                            : "Crafting your response..."}
+                          {displayedLoadingMessage}
                         </span>
                       </div>
                     </div>
-
                     <div className="space-y-2">
                       <Progress
                         value={progress}
@@ -385,13 +441,13 @@ export function PromptResultDialog({
                   </div>
                 </motion.div>
               ) : error ? (
+                // ... (Error UI remains the same)
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   className="text-center py-8"
                 >
-                  {/* Error UI remains the same */}
                   <div
                     className={`flex flex-col items-center space-y-4 ${
                       theme === "dark" ? "text-gray-300" : "text-gray-600"
@@ -430,7 +486,7 @@ export function PromptResultDialog({
                     variant="outline"
                     size="sm"
                     onClick={generateResult}
-                    className={`transition-all duration-200 ${
+                    className={`transition-all duration-200 mt-6 ${
                       theme === "dark"
                         ? "border-gray-700 hover:border-gray-600 hover:bg-gray-800/80 text-gray-300"
                         : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
@@ -441,29 +497,27 @@ export function PromptResultDialog({
                   </Button>
                 </motion.div>
               ) : (
+                // ... (Result UI remains the same, including attribution)
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    {
-                      type === "text" && result ? (
-                        <p
-                          className={`text-sm ${
-                            theme === "dark" ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          {wordCount} words
-                        </p>
-                      ) : (
-                        <div />
-                      ) /* Placeholder to keep layout if CopyButton is to the right */
-                    }
+                    {type === "text" && result ? (
+                      <p
+                        className={`text-sm ${
+                          theme === "dark" ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {wordCount} words
+                      </p>
+                    ) : (
+                      <div />
+                    )}
                     <CopyButton text={result} theme={theme} />
                   </div>
                   {renderContent()}
-                  {/* MODIFIED ATTRIBUTION SECTION */}
                   {!isLoading && result && usedApiProvider && (
                     <div
                       className={`flex items-center gap-2 pt-4 border-t ${
@@ -476,7 +530,7 @@ export function PromptResultDialog({
                         }`}
                       >
                         <img
-                          src="/assets/img/ai.png"
+                          src="/assets/img/llama.png"
                           alt="LLaMA Logo"
                           className="w-5 h-5 object-contain"
                         />
@@ -487,9 +541,9 @@ export function PromptResultDialog({
                         }`}
                       >
                         {usedApiProvider === "deepseek" &&
-                          "Generated using DeepSeek-V3 AI."}
+                          "Generated using DeepSeek-v3 AI."}
                         {usedApiProvider === "cloudflare_text" &&
-                          "Generated using CF Meta LLaMA (llama-4-scout-17b-16e-instruct) for testing purposes."}
+                          "Generated using Meta LLaMA (llama-4-scout-17b-16e-instruct) for testing purposes."}
                         {usedApiProvider === "cloudflare_image" &&
                           "Image generated using CF /stable-diffusion-xl-base-1.0."}
                       </span>
@@ -500,6 +554,7 @@ export function PromptResultDialog({
             </AnimatePresence>
           </div>
 
+          {/* ... (Regenerate button remains the same) */}
           {!isLoading && result && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}

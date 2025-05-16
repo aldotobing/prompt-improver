@@ -15,6 +15,64 @@ export const renderFormattedResponse = (text: string) => {
       );
   };
 
+  const isTableDivider = (line: string) => /^(\|\s*:?-+:?\s*)+\|$/.test(line);
+
+  const parseMarkdownTable = (
+    headerLine: string,
+    dividerLine: string,
+    rows: string[]
+  ) => {
+    const headers = headerLine
+      .split("|")
+      .slice(1, -1)
+      .map((h) => h.trim());
+
+    const dataRows = rows.map((row) =>
+      row
+        .split("|")
+        .slice(1, -1)
+        .map((cell) => cell.trim())
+    );
+
+    return (
+      <table
+        key={`table-${Math.random()}`}
+        className="markdown-table border border-collapse w-full my-4"
+      >
+        <thead>
+          <tr>
+            {headers.map((header, idx) => (
+              <th
+                key={`th-${idx}`}
+                className="border px-2 py-1 bg-gray-100 text-left"
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dataRows.map((cells, rowIdx) => (
+            <tr key={`tr-${rowIdx}`}>
+              {cells.map((cell, cellIdx) => (
+                <td
+                  key={`td-${rowIdx}-${cellIdx}`}
+                  className="border px-2 py-1"
+                >
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: parseInlineFormatting(cell),
+                    }}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
   let inCodeBlock = false;
   let codeBuffer: string[] = [];
   let codeBlockLang = "";
@@ -63,6 +121,21 @@ export const renderFormattedResponse = (text: string) => {
 
     if (inCodeBlock) {
       codeBuffer.push(rawLine);
+      continue;
+    }
+
+    // Table check
+    if (line.startsWith("|") && isTableDivider(lines[i + 1]?.trim() || "")) {
+      const headerLine = line;
+      const dividerLine = lines[i + 1];
+      const tableRows: string[] = [];
+      i += 2;
+      while (i < lines.length && lines[i].startsWith("|")) {
+        tableRows.push(lines[i]);
+        i++;
+      }
+      i--; // karena for-loop bakal naik lagi
+      rendered.push(parseMarkdownTable(headerLine, dividerLine, tableRows));
       continue;
     }
 
@@ -136,7 +209,7 @@ export const renderFormattedResponse = (text: string) => {
       continue;
     }
 
-    // Default paragraph with inline formatting
+    // Default paragraph
     rendered.push(
       <p
         key={`p-${i}`}
@@ -145,7 +218,6 @@ export const renderFormattedResponse = (text: string) => {
     );
   }
 
-  // Flush list if still open diakhir
   flushList("end");
 
   return rendered;
