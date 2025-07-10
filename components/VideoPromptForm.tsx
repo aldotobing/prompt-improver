@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Loader2, PlayCircle, Download, ChevronDown, ChevronUp, Info, Sparkles, Film, Camera, Sun, Palette, Music, Sliders } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import Script from 'next/script';
+import TurnstileWidget from './TurnstileWidget';
 
 interface VideoPromptFormProps {
   template?: any;
@@ -24,7 +26,6 @@ const VIDEO_PURPOSES = [
   'Food & Beverage', 'Travel & Tourism', 'Fitness & Sports', 'Gaming Content',
   'Artistic/Experimental', 'Educational Content', 'News/Journalism'
 ];
-
 
 const CAMERA_SHOTS = [
   'Extreme Close-up', 'Close-up', 'Medium Close-up', 'Medium Shot',
@@ -45,7 +46,6 @@ const CAMERA_MOVEMENTS = [
   'Crash Zoom', 'Whip Zoom', 'Snap Zoom', 'Zolly', 'Rolling Shutter'
 ];
 
-
 const ASPECT_RATIOS = [
   '16:9 (Widescreen)', '9:16 (Vertical)', '1:1 (Square)', '4:5 (Portrait)',
   '21:9 (Cinematic)', '4:3 (Standard)', '2.35:1 (Anamorphic)', '3:2 (35mm)'
@@ -56,13 +56,12 @@ const FRAME_RATES = [
   '50fps (PAL HFR)', '60fps (Slow Motion)', '120fps (Super Slow Motion)'
 ];
 
-
 const Section = ({ title, icon: Icon, children, defaultOpen = true }: { title: string; icon: React.ElementType; children: React.ReactNode; defaultOpen?: boolean }) => {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
-  
+
   return (
     <div className="border rounded-lg overflow-hidden mb-6">
-      <button 
+      <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-6 py-4 bg-muted/50 hover:bg-muted/70 transition-colors flex items-center justify-between text-left"
@@ -103,14 +102,32 @@ const FormField = ({ label, name, tooltip, children }: { label: string; name: st
   </div>
 );
 
-export function VideoPromptForm({ 
-  template, 
-  values, 
-  onChange, 
-  onSubmit, 
-  isSubmitting, 
-  onPromptImproved 
+export function VideoPromptForm({
+  template,
+  values,
+  onChange,
+  onSubmit,
+  isSubmitting,
+  onPromptImproved
 }: VideoPromptFormProps) {
+  const [isVerified, setIsVerified] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const handleTurnstileVerify = (token: string) => {
+    setIsVerified(true);
+    setTurnstileToken(token);  
+  };
+
+  const handleTurnstileError = () => {
+    setIsVerified(false);
+    setTurnstileToken(null);
+  };
+
+  const handleTurnstileExpire = () => {
+    setIsVerified(false);
+    setTurnstileToken(null);
+  };
+
   const generateEnhancedPrompt = (formValues: Record<string, string>): string => {
     const {
       videoPurpose,
@@ -172,6 +189,15 @@ export function VideoPromptForm({
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isVerified || !turnstileToken) {
+      alert('Please complete the human verification before submitting.');
+      return;
+    }
+    
+    // Add the turnstile token to the form values
+    const formValues = { ...values, turnstileToken };
+    onChange(formValues);
     onSubmit();
   };
 
@@ -404,52 +430,73 @@ export function VideoPromptForm({
 
         <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t py-4">
           <div className="container mx-auto px-4">
-            <div className="flex flex-col sm:flex-row justify-end gap-3 max-w-3xl ml-auto">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={() => {
-                  onChange({
-                    videoPurpose: '',
-                    targetAudience: '',
-                    aspectRatio: '16:9 (Widescreen)',
-                    frameRate: '30fps (NTSC)',
-                    subject: '',
-                    action: '',
-                    mood: '',
-                    colorPalette: '',
-                    cameraShot: '',
-                    cameraMovement: '',
-                    videoStyleSelect: '',
-                    composition: '',
-                    videoStyleDetail: '',
-                    lightingDetail: '',
-                    additionalDetails: '',
-                    audioDescription: ''
-                  });
-                }}
-                className="h-12 px-6 border-muted-foreground/30 hover:border-foreground/50 text-muted-foreground hover:text-foreground flex items-center justify-center gap-2"
-              >
-                <span className="text-base">Clear Form</span>
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-12 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span className="text-base">Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <Film className="h-5 w-5" />
-                    <span className="text-base">Generate Video Prompt</span>
-                  </>
+            <div className="max-w-3xl mx-auto">
+              {/* Verification Section */}
+              <div className="flex flex-col items-center space-y-2 mb-4">
+                <div className="w-full max-w-xs mx-auto bg-background p-2 rounded-lg">
+                  <TurnstileWidget 
+                    theme="light"
+                    onVerify={handleTurnstileVerify}
+                    onError={handleTurnstileError}
+                    onExpire={handleTurnstileExpire}
+                  />
+                </div>
+                
+                {!isVerified && (
+                  <p className="text-sm text-center text-muted-foreground">
+                    Please verify you're human to continue
+                  </p>
                 )}
-              </Button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      onChange({
+                        videoPurpose: '',
+                        targetAudience: '',
+                        aspectRatio: '16:9 (Widescreen)',
+                        frameRate: '30fps (NTSC)',
+                        subject: '',
+                        action: '',
+                        mood: '',
+                        colorPalette: '',
+                        cameraShot: '',
+                        cameraMovement: '',
+                        videoStyleSelect: '',
+                        composition: '',
+                        videoStyleDetail: '',
+                        lightingDetail: '',
+                        additionalDetails: '',
+                        audioDescription: ''
+                      });
+                    }}
+                    className="h-12 flex-1 border-muted-foreground/30 hover:border-foreground/50 text-muted-foreground hover:text-foreground"
+                  >
+                    <span className="text-base">Clear Form</span>
+                  </Button>
+                  
+                  <Button 
+                    type="submit" 
+                    className="h-12 flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    disabled={isSubmitting || !isVerified}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="mr-2 h-5 w-5" />
+                        <span className="text-base">Generate Video Prompt</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
             </div>
           </div>
         </div>

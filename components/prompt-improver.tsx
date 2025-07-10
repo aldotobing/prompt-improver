@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isImageGenerationPrompt } from "@/lib/image-prompt-detector";
+import TurnstileWidget from "./TurnstileWidget";
 
 // Import components
 import { Tabs } from "./Tabs";
@@ -33,7 +34,20 @@ export default function PromptImprover({ theme }: ThemeProps) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState("editor");
   const [promptStyle, setPromptStyle] = useState("detailed");
+  const [isVerified, setIsVerified] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleTurnstileVerify = (token: string) => {
+    setIsVerified(true);
+  };
+
+  const handleTurnstileError = () => {
+    setIsVerified(false);
+  };
+
+  const handleTurnstileExpire = () => {
+    setIsVerified(false);
+  };
 
   // Update the history tab label with the current count
   const tabs = TABS.map((tab) => {
@@ -49,6 +63,11 @@ export default function PromptImprover({ theme }: ThemeProps) {
   const improvePrompt = async () => {
     if (!originalPrompt.trim()) {
       setError("Please enter a prompt to improve");
+      return;
+    }
+
+    if (!isVerified) {
+      setError("Please complete the verification");
       return;
     }
 
@@ -185,7 +204,8 @@ export default function PromptImprover({ theme }: ThemeProps) {
         theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50"
       }`}
     >
-      <div className="w-full max-w-4xl mx-auto px-4 sm:px-0">
+      <div className="w-full max-w-4xl mx-auto p-4 sm:p-6">
+
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -259,15 +279,36 @@ export default function PromptImprover({ theme }: ThemeProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.5 }}
+              className="space-y-4"
             >
+              {/* Cloudflare Turnstile */}
+              <div className="w-full flex justify-center">
+                <div className="flex flex-col items-center">
+                  <TurnstileWidget 
+                    theme={theme as 'light' | 'dark'}
+                    onVerify={handleTurnstileVerify}
+                    onError={handleTurnstileError}
+                    onExpire={handleTurnstileExpire}
+                    className="w-full max-w-xs"
+                  />
+                  {!isVerified && (
+                    <p className="text-sm text-center text-muted-foreground mt-1">
+                      Please verify you're human to continue
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <Button
                 onClick={improvePrompt}
-                disabled={isLoading || !originalPrompt.trim()}
+                disabled={isLoading || !originalPrompt.trim() || !isVerified}
                 className={`w-full h-[52px] ${
                   theme === "dark"
                     ? "bg-blue-600 hover:bg-blue-500"
                     : "bg-blue-600 hover:bg-blue-700"
-                } text-white font-semibold relative overflow-hidden`}
+                } text-white font-semibold relative overflow-hidden ${
+                  (!originalPrompt.trim() || !isVerified) ? 'opacity-70' : ''
+                }`}
               >
                 <AnimatePresence mode="wait">
                   {isLoading ? (
