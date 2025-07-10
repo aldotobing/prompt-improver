@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Navigation } from "@/components/Navigation";
 
 export const metadata: Metadata = {
   title: {
@@ -171,8 +172,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
-        {children}
+      <body className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-950 text-gray-800 dark:text-gray-100 transition-colors duration-500">
+        <Navigation />
+        <main className="flex-grow">
+          {children}
+        </main>
       </body>
     </html>
   );

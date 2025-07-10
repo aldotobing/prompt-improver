@@ -16,13 +16,13 @@ import { HistoryTab } from "./HistoryTab";
 import { LoadingAnimation } from "./LoadingAnimation";
 
 // Import types and constants
-import { HistoryItem, ThemeProps } from "./types";
+import { HistoryItem } from "./types";
 import { TABS } from "./constants";
 
 // Import dialog
 import { PromptResultDialog } from "./prompt-result-dialog";
 
-export default function PromptImprover({ theme }: ThemeProps) {
+export default function PromptImprover() {
   const [originalPrompt, setOriginalPrompt] = useState("");
   const [improvedPrompt, setImprovedPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -199,33 +199,20 @@ export default function PromptImprover({ theme }: ThemeProps) {
   };
 
   return (
-    <div
-      className={`w-full min-h-screen p-4 sm:p-8 transition-colors duration-300 ${
-        theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50"
-      }`}
-    >
-      <div className="w-full max-w-4xl mx-auto p-4 sm:p-6">
-
+    <div className="w-full min-h-screen p-4 sm:p-8 transition-colors duration-300 bg-gray-50 dark:bg-gray-900">
+      <div className="w-full max-w-4xl mx-auto p-4 sm:p-6 bg-white dark:bg-gray-800/50 rounded-lg shadow-sm">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row items-center mb-6"
         >
-          <Sparkles
-            className={`mr-2 h-6 w-6 ${
-              theme === "dark" ? "text-blue-400" : "text-blue-600"
-            }`}
-          />
+          <Sparkles className="mr-2 h-6 w-6 text-blue-600 dark:text-blue-400" />
           <div>
-            <h1
-              className={`text-2xl font-bold ${
-                theme === "dark" ? "text-blue-100" : "text-gray-900"
-              }`}
-            >
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-blue-100">
               AI Prompt Improver
             </h1>
-            <p className={theme === "dark" ? "text-gray-300" : "text-gray-600"}>
+            <p className="text-gray-600 dark:text-gray-300">
               Transform vague prompts into clear, specific, and effective
               instructions
             </p>
@@ -236,13 +223,11 @@ export default function PromptImprover({ theme }: ThemeProps) {
           tabs={tabs}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          theme={theme}
         />
         
         {activeTab === "editor" ? (
           <div className="space-y-6">
             <PromptInput
-              theme={theme}
               originalPrompt={originalPrompt}
               setOriginalPrompt={setOriginalPrompt}
               promptStyle={promptStyle}
@@ -251,7 +236,6 @@ export default function PromptImprover({ theme }: ThemeProps) {
             />
 
             <PromptSuggestions
-              theme={theme}
               onSuggestionClick={useSuggestion}
               onTemplateSelect={(template) => {
                 setOriginalPrompt(template);
@@ -267,9 +251,7 @@ export default function PromptImprover({ theme }: ThemeProps) {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className={`${
-                  theme === "dark" ? "text-red-400" : "text-red-500"
-                } text-sm`}
+                className="text-sm text-red-500 dark:text-red-400"
               >
                 {error}
               </motion.p>
@@ -285,7 +267,6 @@ export default function PromptImprover({ theme }: ThemeProps) {
               <div className="w-full flex justify-center">
                 <div className="flex flex-col items-center">
                   <TurnstileWidget 
-                    theme={theme as 'light' | 'dark'}
                     onVerify={handleTurnstileVerify}
                     onError={handleTurnstileError}
                     onExpire={handleTurnstileExpire}
@@ -302,11 +283,7 @@ export default function PromptImprover({ theme }: ThemeProps) {
               <Button
                 onClick={improvePrompt}
                 disabled={isLoading || !originalPrompt.trim() || !isVerified}
-                className={`w-full h-[52px] ${
-                  theme === "dark"
-                    ? "bg-blue-600 hover:bg-blue-500"
-                    : "bg-blue-600 hover:bg-blue-700"
-                } text-white font-semibold relative overflow-hidden ${
+                className={`w-full h-[52px] bg-blue-600 hover:bg-blue-700 text-white font-semibold relative overflow-hidden ${
                   (!originalPrompt.trim() || !isVerified) ? 'opacity-70' : ''
                 }`}
               >
@@ -339,7 +316,6 @@ export default function PromptImprover({ theme }: ThemeProps) {
 
             {improvedPrompt && (
               <ImprovedPromptDisplay
-                theme={theme}
                 improvedPrompt={improvedPrompt}
                 isCopied={isCopied}
                 onCopy={copyToClipboard}
@@ -359,7 +335,6 @@ export default function PromptImprover({ theme }: ThemeProps) {
         ) : (
           <div className="mt-6">
             <HistoryTab
-              theme={theme}
               history={history}
               onUseHistoryItem={useHistoryItem}
               onClearHistory={clearHistory}
@@ -372,7 +347,6 @@ export default function PromptImprover({ theme }: ThemeProps) {
         open={isPromptDialogOpen}
         onOpenChange={setIsPromptDialogOpen}
         prompt={improvedPrompt}
-        theme={theme}
         type={promptType}
       />
     </div>

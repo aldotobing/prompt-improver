@@ -1,68 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import PromptImprover from "@/components/prompt-improver";
-import { Moon, Sun, Github, Twitter } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { Github, Twitter } from "lucide-react";
+import PromptImprover from "@/components/prompt-improver";
 import { BeSpecificDialog } from "@/components/tips/be-specific-dialog";
 import { ProvideContextDialog } from "@/components/tips/provide-context-dialog";
 import { UseExamplesDialog } from "@/components/tips/use-examples-dialog";
 
 export default function Home() {
-  const [theme, setTheme] = useState<'light' | 'dark'>("light");
-
-  // Handle theme changes
-  useEffect(() => {
-    // Set light mode as default
-    const savedTheme = localStorage.getItem("theme");
-    const initialTheme = (savedTheme === 'light' || savedTheme === 'dark') ? savedTheme : 'light';
-    
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle("dark", initialTheme === "dark");
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-  };
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-950 text-gray-800 dark:text-gray-100 transition-colors duration-500">
-      {/* Navigation */}
-      <nav className="w-full py-4 px-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">AI</span>
-            </div>
-            <span className="font-bold text-xl">PromptPro</span>
-          </div>
-          <div className="hidden md:flex items-center gap-4">
-            <a 
-              href="/" 
-              className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-            >
-              Text Prompts
-            </a>
-            <a 
-              href="/video-prompt" 
-              className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline transition-colors"
-            >
-              Video Prompts
-            </a>
-          </div>
-        </div>
-
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
-      </nav>
+    <div className="flex flex-col min-h-screen">
 
       <main className="flex-grow max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 w-full">
         {/* Header */}
@@ -84,7 +32,7 @@ export default function Home() {
 
         {/* Main Content */}
         <section className="animate-fade-in-slow bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 mb-8">
-          <PromptImprover theme={theme} />
+          <PromptImprover />
         </section>
 
         {/* Prompt Writing Tips Section */}

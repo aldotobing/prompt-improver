@@ -4,7 +4,6 @@ export interface TabsProps {
   tabs: Tab[];
   activeTab: string;
   setActiveTab: (id: string) => void;
-  theme?: 'light' | 'dark';
 }
 
 export interface HistoryItem {
@@ -13,17 +12,15 @@ export interface HistoryItem {
   timestamp: number;
 }
 
-export interface ThemeProps {
-  theme: 'light' | 'dark';
-}
+// Theme is now handled by next-themes and Tailwind dark mode
 
 export interface SuggestionHandler {
   (suggestion: string): void;
 }
 
-export interface PromptImproverProps extends ThemeProps {}
+export interface PromptImproverProps {}
 
-export interface PromptInputProps extends ThemeProps {
+export interface PromptInputProps {
   originalPrompt: string;
   setOriginalPrompt: (prompt: string) => void;
   promptStyle: string;
@@ -31,7 +28,7 @@ export interface PromptInputProps extends ThemeProps {
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
 }
 
-export interface PromptSuggestionsProps extends ThemeProps {
+export interface PromptSuggestionsProps {
   onSuggestionClick: (suggestion: string) => void;
 }
 
@@ -41,10 +38,9 @@ export interface ImprovedPromptDisplayProps {
   onCopy: () => void;
   onPromptIt: () => void;
   onTemplateSelect?: (template: string) => void;
-  theme: 'light' | 'dark';
 }
 
-export interface HistoryTabProps extends ThemeProps {
+export interface HistoryTabProps {
   history: HistoryItem[];
   onUseHistoryItem: (item: HistoryItem) => void;
   onClearHistory: () => void;

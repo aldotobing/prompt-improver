@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { defaultTemplates, templateCategories, templateDummyData } from "@/constants/promptTemplates";
 import { PromptTemplate } from "@/types/template";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 
 interface TemplateSelectorProps {
   onSelect: (template: string) => void;
-  theme: string;
 }
 
 // Helper function to replace placeholders in a string
@@ -19,7 +18,7 @@ const replacePlaceholders = (str: string, values: Record<string, string>): strin
   );
 };
 
-export function TemplateSelector({ onSelect, theme }: TemplateSelectorProps) {
+export function TemplateSelector({ onSelect }: TemplateSelectorProps) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [generatedContent, setGeneratedContent] = useState<Record<string, string>>({});
@@ -141,27 +140,30 @@ ${prompt}`
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          className={`${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-white hover:bg-gray-50"}`}
+        <Button
+          variant="outline"
+          className="w-full justify-between bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-800/80 dark:border-gray-600 dark:hover:bg-gray-700/80"
         >
-          🎨 Templates
+          <span className="text-gray-700 dark:text-gray-200">
+            Select a template
+          </span>
+          <ChevronDown
+            className="ml-2 h-4 w-4 text-gray-500 dark:text-gray-400"
+          />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="start">
-        <div className={`p-4 border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}>
+        <div className={`p-4 border-b border-gray-200 dark:border-gray-700`}>
           <h3 className="font-medium mb-2">Prompt Templates</h3>
           <div className="flex flex-wrap gap-2 mb-4">
             {templateCategories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  selectedCategory === category.id
-                    ? "bg-blue-500 text-white"
-                    : theme === "dark"
-                    ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className={`px-4 py-2 text-sm ${
+                  category.id === selectedCategory
+                    ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 }`}
               >
                 {category.icon} {category.name}
