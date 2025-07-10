@@ -36,26 +36,55 @@ export default function PromptImprover() {
   const [promptStyle, setPromptStyle] = useState("detailed");
   const [showTurnstile, setShowTurnstile] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const verificationToken = useRef<string>('');
+  const verificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTurnstileVerify = (token: string) => {
+    setVerificationStatus('verifying');
     verificationToken.current = token;
     setIsVerified(true);
-    // Proceed with the improvement after verification
-    processImprovePrompt();
+    setError('');
+    
+    // Clear any existing timeout
+    if (verificationTimeoutRef.current) {
+      clearTimeout(verificationTimeoutRef.current);
+    }
+    
+    // Add a small delay to show the verifying state
+    verificationTimeoutRef.current = setTimeout(() => {
+      setVerificationStatus('success');
+      // Proceed with the improvement after a short delay to show success state
+      setTimeout(() => {
+        setShowTurnstile(false);
+        processImprovePrompt();
+      }, 500);
+    }, 1000);
   };
 
   const handleTurnstileError = () => {
+    setVerificationStatus('error');
     setError("Verification failed. Please try again.");
-    setShowTurnstile(false);
-    setIsVerified(false);
+    
+    // Reset after showing error
+    setTimeout(() => {
+      setShowTurnstile(false);
+      setIsVerified(false);
+      setVerificationStatus('idle');
+    }, 2000);
   };
 
   const handleTurnstileExpire = () => {
-    setError("Verification expired. Please try again.");
-    setShowTurnstile(false);
-    setIsVerified(false);
+    setVerificationStatus('error');
+    setError("Verification expired. Please complete the challenge again.");
+    
+    // Reset after showing error
+    setTimeout(() => {
+      setShowTurnstile(false);
+      setIsVerified(false);
+      setVerificationStatus('idle');
+    }, 2000);
   };
 
   // Update the history tab label with the current count
@@ -77,7 +106,22 @@ export default function PromptImprover() {
     
     // Show Turnstile verification if not already verified
     if (!isVerified || !verificationToken.current) {
+      setVerificationStatus('idle');
       setShowTurnstile(true);
+      
+      // Set a timeout to handle cases where user doesn't complete verification
+      if (verificationTimeoutRef.current) {
+        clearTimeout(verificationTimeoutRef.current);
+      }
+      
+      verificationTimeoutRef.current = setTimeout(() => {
+        if (!isVerified) {
+          setVerificationStatus('error');
+          setError("Verification timed out. Please try again.");
+          setShowTurnstile(false);
+        }
+      }, 180000); // 3 minutes timeout
+      
       return;
     }
     
@@ -289,16 +333,28 @@ export default function PromptImprover() {
                     className="w-full overflow-hidden"
                   >
                     <div className="w-full flex justify-center">
-                      <div className="flex flex-col items-center w-full max-w-xs">
-                        <TurnstileWidget 
-                          onVerify={handleTurnstileVerify}
-                          onError={handleTurnstileError}
-                          onExpire={handleTurnstileExpire}
-                          className="w-full"
-                        />
-                        <p className="text-sm text-center text-muted-foreground mt-2 mb-4">
-                          Complete verification to improve your prompt
+                      <div className="flex flex-col items-center w-full max-w-md p-4 bg-muted/50 rounded-lg">
+                        <h4 className="text-sm font-medium mb-2">Security Check</h4>
+                        <p className="text-xs text-center text-muted-foreground mb-3">
+                          {verificationStatus === 'verifying' 
+                            ? 'Verifying...'
+                            : verificationStatus === 'success'
+                            ? 'Verification successful!'
+                            : 'Complete the security check to continue'}
                         </p>
+                        <div className="w-full flex justify-center">
+                          <TurnstileWidget 
+                            onVerify={handleTurnstileVerify}
+                            onError={handleTurnstileError}
+                            onExpire={handleTurnstileExpire}
+                            className="w-full"
+                          />
+                        </div>
+                        {verificationStatus === 'error' && (
+                          <p className="text-xs text-destructive mt-2 text-center">
+                            Verification failed. Please try again.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </motion.div>
