@@ -1,20 +1,23 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { History, Trash2 } from "lucide-react";
-import { HistoryItem, ThemeProps } from "./types";
+import { HistoryItem } from "./types";
+import { useTheme } from "next-themes";
 
-interface HistoryTabProps extends ThemeProps {
+interface HistoryTabProps {
   history: HistoryItem[];
   onUseHistoryItem: (item: HistoryItem) => void;
   onClearHistory: () => void;
 }
 
 export const HistoryTab = ({
-  theme,
   history,
   onUseHistoryItem,
   onClearHistory,
-}: HistoryTabProps) => (
+}: HistoryTabProps) => {
+  const { theme } = useTheme();
+  
+  return (
   <div className="space-y-4">
     <div className="flex justify-between items-center mb-4">
       <h3 className="text-lg font-medium">Prompt History</h3>
@@ -90,4 +93,5 @@ export const HistoryTab = ({
       </div>
     )}
   </div>
-);
+  );
+}

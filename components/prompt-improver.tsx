@@ -34,18 +34,27 @@ export default function PromptImprover() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState("editor");
   const [promptStyle, setPromptStyle] = useState("detailed");
+  const [showTurnstile, setShowTurnstile] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const verificationToken = useRef<string>('');
 
   const handleTurnstileVerify = (token: string) => {
+    verificationToken.current = token;
     setIsVerified(true);
+    // Proceed with the improvement after verification
+    processImprovePrompt();
   };
 
   const handleTurnstileError = () => {
+    setError("Verification failed. Please try again.");
+    setShowTurnstile(false);
     setIsVerified(false);
   };
 
   const handleTurnstileExpire = () => {
+    setError("Verification expired. Please try again.");
+    setShowTurnstile(false);
     setIsVerified(false);
   };
 
@@ -65,11 +74,18 @@ export default function PromptImprover() {
       setError("Please enter a prompt to improve");
       return;
     }
-
-    if (!isVerified) {
-      setError("Please complete the verification");
+    
+    // Show Turnstile verification if not already verified
+    if (!isVerified || !verificationToken.current) {
+      setShowTurnstile(true);
       return;
     }
+    
+    // If already verified, proceed with the improvement
+    await processImprovePrompt();
+  };
+  
+  const processImprovePrompt = async () => {
 
     setError("");
     setIsLoading(true);
@@ -263,29 +279,38 @@ export default function PromptImprover() {
               transition={{ delay: 0.4, duration: 0.5 }}
               className="space-y-4"
             >
-              {/* Cloudflare Turnstile */}
-              <div className="w-full flex justify-center">
-                <div className="flex flex-col items-center">
-                  <TurnstileWidget 
-                    onVerify={handleTurnstileVerify}
-                    onError={handleTurnstileError}
-                    onExpire={handleTurnstileExpire}
-                    className="w-full max-w-xs"
-                  />
-                  {!isVerified && (
-                    <p className="text-sm text-center text-muted-foreground mt-1">
-                      Please verify you're human to continue
-                    </p>
-                  )}
-                </div>
-              </div>
+              {/* Cloudflare Turnstile - Only show when needed */}
+              <AnimatePresence>
+                {showTurnstile && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="w-full overflow-hidden"
+                  >
+                    <div className="w-full flex justify-center">
+                      <div className="flex flex-col items-center w-full max-w-xs">
+                        <TurnstileWidget 
+                          onVerify={handleTurnstileVerify}
+                          onError={handleTurnstileError}
+                          onExpire={handleTurnstileExpire}
+                          className="w-full"
+                        />
+                        <p className="text-sm text-center text-muted-foreground mt-2 mb-4">
+                          Complete verification to improve your prompt
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <Button
                 onClick={improvePrompt}
-                disabled={isLoading || !originalPrompt.trim() || !isVerified}
+                disabled={isLoading || !originalPrompt.trim()}
                 className={`w-full h-[52px] bg-blue-600 hover:bg-blue-700 text-white font-semibold relative overflow-hidden ${
-                  (!originalPrompt.trim() || !isVerified) ? 'opacity-70' : ''
-                }`}
+                  !originalPrompt.trim() ? 'opacity-70' : ''
+                } ${showTurnstile ? 'mt-4' : ''}`}
               >
                 <AnimatePresence mode="wait">
                   {isLoading ? (

@@ -4,6 +4,7 @@ export interface TabsProps {
   tabs: Tab[];
   activeTab: string;
   setActiveTab: (id: string) => void;
+  theme?: 'light' | 'dark';
 }
 
 export interface HistoryItem {

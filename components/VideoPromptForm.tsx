@@ -5,6 +5,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Loader2, PlayCircle, Download, ChevronDown, ChevronUp, Info, Sparkles, Film, Camera, Sun, Palette, Music, Sliders } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import Script from 'next/script';
@@ -110,22 +111,50 @@ export function VideoPromptForm({
   isSubmitting,
   onPromptImproved
 }: VideoPromptFormProps) {
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
+  const [showTurnstile, setShowTurnstile] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const formRef = React.useRef<HTMLFormElement>(null);
 
-  const handleTurnstileVerify = (token: string) => {
+  // Reset verification state when form values change
+  useEffect(() => {
+    setIsVerified(false);
+    setTurnstileToken('');
+    setShowTurnstile(false);
+  }, [values]);
+
+  const handleVerify = (token: string) => {
     setIsVerified(true);
-    setTurnstileToken(token);  
+    setTurnstileToken(token);
+    // Submit the form directly after verification
+    onSubmit();
   };
 
-  const handleTurnstileError = () => {
-    setIsVerified(false);
-    setTurnstileToken(null);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // If not verified yet, show the Turnstile widget
+    if (!isVerified) {
+      setShowTurnstile(true);
+      return;
+    }
   };
 
-  const handleTurnstileExpire = () => {
+  const handleError = () => {
     setIsVerified(false);
-    setTurnstileToken(null);
+    setTurnstileToken('');
+    setShowTurnstile(false);
+    toast.error('Verification failed. Please try again.');
+  };
+
+  const handleExpire = () => {
+    setIsVerified(false);
+    setTurnstileToken('');
+    setShowTurnstile(false);
+    toast.error('Verification expired. Please try again.');
   };
 
   const generateEnhancedPrompt = (formValues: Record<string, string>): string => {
@@ -211,7 +240,7 @@ export function VideoPromptForm({
 
   return (
     <TooltipProvider>
-      <form id="video-prompt-form" className="space-y-8" onSubmit={handleFormSubmit}>
+      <form id="video-prompt-form" ref={formRef} onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-6 rounded-xl border">
           <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
             <Film className="h-6 w-6 text-primary" />
@@ -431,21 +460,30 @@ export function VideoPromptForm({
         <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t py-4">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              {/* Verification Section */}
-              <div className="flex flex-col items-center space-y-2 mb-4">
-                <div className="w-full max-w-xs mx-auto bg-background p-2 rounded-lg">
-                  <TurnstileWidget 
-                    theme="light"
-                    onVerify={handleTurnstileVerify}
-                    onError={handleTurnstileError}
-                    onExpire={handleTurnstileExpire}
-                  />
-                </div>
-                
-                {!isVerified && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    Please verify you're human to continue
-                  </p>
+              {/* Turnstile Verification */}
+              <div className="flex flex-col items-center space-y-2 my-4">
+                {showTurnstile && (
+                  <div className="w-full max-w-xs mx-auto bg-background p-2 rounded-lg">
+                    <div className="mt-2">
+                      <div className="text-center mb-3">
+                        <p className="text-sm font-medium text-foreground mb-1">Security Check Required</p>
+                        <p className="text-xs text-muted-foreground">
+                          Complete this quick verification to ensure you're human.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground/80 mt-1">
+                          This helps prevent automated requests and ensures fair usage for everyone.
+                        </p>
+                      </div>
+                      <div className="flex justify-center">
+                      <TurnstileWidget
+                        theme="light"
+                        onVerify={handleVerify}
+                        onError={handleError}
+                        onExpire={handleExpire}
+                      />
+                    </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -482,7 +520,7 @@ export function VideoPromptForm({
                   <Button 
                     type="submit" 
                     className="h-12 flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    disabled={isSubmitting || !isVerified}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <>
