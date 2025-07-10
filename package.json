@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=8192' next build --no-lint",
+    "build": "node scripts/build.js",
     "start": "next start",
     "lint": "next lint"
   },
