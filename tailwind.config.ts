@@ -1,5 +1,8 @@
 import type { Config } from "tailwindcss";
 
+// Add scrollbar-hide plugin
+const scrollbarHide = require('tailwind-scrollbar-hide');
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -91,6 +94,10 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    scrollbarHide, 
+    require("tailwindcss-animate"),
+    require('@tailwindcss/typography'),
+  ],
 };
 export default config;

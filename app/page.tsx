@@ -9,15 +9,16 @@ import { ProvideContextDialog } from "@/components/tips/provide-context-dialog";
 import { UseExamplesDialog } from "@/components/tips/use-examples-dialog";
 
 export default function Home() {
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState<'light' | 'dark'>("light");
 
   // Handle theme changes
   useEffect(() => {
     // Set light mode as default
-    const savedTheme = localStorage.getItem("theme") || "light";
-
-    setTheme(savedTheme);
-    document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    const savedTheme = localStorage.getItem("theme");
+    const initialTheme = (savedTheme === 'light' || savedTheme === 'dark') ? savedTheme : 'light';
+    
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("dark", initialTheme === "dark");
   }, []);
 
   const toggleTheme = () => {
@@ -31,11 +32,27 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-950 text-gray-800 dark:text-gray-100 transition-colors duration-500">
       {/* Navigation */}
       <nav className="w-full py-4 px-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">AI</span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold">AI</span>
+            </div>
+            <span className="font-bold text-xl">PromptPro</span>
           </div>
-          <span className="font-bold text-xl">PromptPro</span>
+          <div className="hidden md:flex items-center gap-4">
+            <a 
+              href="/" 
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+            >
+              Text Prompts
+            </a>
+            <a 
+              href="/video-prompt" 
+              className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline transition-colors"
+            >
+              Video Prompts
+            </a>
+          </div>
         </div>
 
         <button
