@@ -398,30 +398,35 @@ export default function PromptImprover() {
                     exit={{ opacity: 0, height: 0 }}
                     className="w-full overflow-hidden"
                   >
-                    <div className="w-full flex justify-center">
-                      <div className="flex flex-col items-center w-full max-w-md p-4 bg-muted/50 rounded-lg">
-                        <h4 className="text-sm font-medium mb-2">Security Check</h4>
-                        <p className="text-xs text-center text-muted-foreground mb-3">
+                    <div className="w-full flex flex-col items-center space-y-4">
+                      <div className="text-center max-w-md">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Security Verification</h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
                           {verificationStatus === 'verifying' 
-                            ? 'Verifying...'
+                            ? 'Verifying your request...'
                             : verificationStatus === 'success'
-                            ? 'Verification successful!'
-                            : 'Complete the security check to continue'}
+                            ? '✓ Verification complete!'
+                            : 'Please complete the security check to continue. This helps us prevent automated requests.'}
                         </p>
-                        <div className="w-full flex justify-center">
-                          <TurnstileWidget 
-                            onVerify={handleTurnstileVerify}
-                            onError={handleTurnstileError}
-                            onExpire={handleTurnstileExpire}
-                            className="w-full"
-                          />
-                        </div>
-                        {verificationStatus === 'error' && (
-                          <p className="text-xs text-destructive mt-2 text-center">
-                            Verification failed. Please try again.
-                          </p>
-                        )}
                       </div>
+                      <div className="w-full flex justify-center">
+                        <TurnstileWidget 
+                          onVerify={handleTurnstileVerify}
+                          onError={handleTurnstileError}
+                          onExpire={handleTurnstileExpire}
+                          className="w-full max-w-[300px]"
+                        />
+                      </div>
+                      {verificationStatus === 'error' && (
+                        <div className="text-center">
+                          <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                            Verification failed. The security check expired or encountered an error.
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Please complete the verification again to continue.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
