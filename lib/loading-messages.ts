@@ -1,37 +1,51 @@
+// Initial loading messages when starting text generation
 export const INITIAL_MESSAGES_TEXT: string[] = [
-  "Waking up the AI...",
-  "Analyzing your prompt...",
-  "Preparing for text generation...",
-  "Consulting language models...",
+  "Initializing AI models...",
+  "Analyzing your request...",
+  "Selecting the best AI for your task...",
+  "Preparing response generation...",
 ];
 
+// Initial loading messages when starting image generation
 export const INITIAL_MESSAGES_IMAGE: string[] = [
-  "Waking up image generators...",
-  "Analyzing prompt for image creation...",
-  "Preparing image diffusion models...",
-  "Connecting to pixel pipeline...",
+  "Preparing image generation pipeline...",
+  "Analyzing visual requirements...",
+  "Initializing Stable Diffusion XL...",
+  "Loading image generation models...",
 ];
 
+// Messages for image generation process
 export const IMAGE_GENERATION_MESSAGES: string[] = [
-  "Sending prompt to CF stable-diffusion-xl-base-1.0...",
-  "Image diffusion process initiated...",
-  "Pixels are forming, please hold on...",
-  "Rendering your visual masterpiece...",
-  "Applying final touches to the image...",
+  "Generating your image with Stable Diffusion XL...",
+  "Creating visual elements based on your prompt...",
+  "Refining image details and composition...",
+  "Applying final artistic touches...",
+  "Optimizing image quality...",
 ];
 
+// Messages for Google Gemini model
+export const GEMINI_MESSAGES: string[] = [
+  "Engaging Google Gemini for your request...",
+  "Gemini is analyzing your prompt...",
+  "Processing with Google's latest AI technology...",
+  "Gemini is crafting a thoughtful response...",
+  "Finalizing Gemini's response...",
+];
+
+// Messages for DeepSeek model
 export const DEEPSEEK_MESSAGES: string[] = [
-  "Connecting to DeepSeek AI servers...",
+  "Connecting to DeepSeek's advanced AI...",
   "DeepSeek is processing your request...",
-  "Analyzing prompt for optimal DeepSeek response...",
-  "Compiling DeepSeek's insights...",
-  "Fetching DeepSeek's generation...",
+  "Analyzing with DeepSeek's 128K context...",
+  "Compiling comprehensive response...",
+  "Finalizing DeepSeek's insights...",
 ];
 
+// Messages for Cloudflare's LLaMA model
 export const CLOUDFLARE_LLAMA_MESSAGES: string[] = [
-  "Engaging Meta LLaMA via Cloudflare...",
-  "LLaMA is pondering your prompt...",
-  "Crafting a response with LLaMA's intelligence...",
+  "Initializing Meta's LLaMA model...",
+  "LLaMA is processing your request...",
+  "Generating response with LLaMA's capabilities...",
   "Fetching results from Cloudflare AI network...",
   "Finalizing LLaMA's output...",
 ];

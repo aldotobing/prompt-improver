@@ -25,6 +25,7 @@ import { PromptResultDialog } from "./prompt-result-dialog";
 export default function PromptImprover() {
   const [originalPrompt, setOriginalPrompt] = useState("");
   const [improvedPrompt, setImprovedPrompt] = useState("");
+  const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState("");
@@ -129,8 +130,120 @@ export default function PromptImprover() {
     await processImprovePrompt();
   };
   
-  const processImprovePrompt = async () => {
+  const callGeminiAPI = async (prompt: string): Promise<{text: string, model: string}> => {
+    if (!process.env.NEXT_PUBLIC_AI_PROXY_ENDPOINT) {
+      throw new Error("AI Proxy endpoint is not configured");
+    }
 
+    const model = 'gemini-2.5-flash';
+    const response = await fetch(process.env.NEXT_PUBLIC_AI_PROXY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: `You are an expert prompt engineer.
+
+        Transform the ORIGINAL PROMPT below into a sharper, fully-structured prompt while *strictly* preserving its original intent, context, tone, and language (English, Indonesian, or any other).
+
+        ${
+          promptStyle === "detailed"
+            ? `Rewrite the original prompt to make it more structured, detailed, and comprehensive, while still concise and focused.
+
+              Apply advanced prompt engineering principles:
+              - Be specific (replace vague instructions with precise ones).
+              - Provide relevant context (if already implied in the original).
+              - Clarify goals and constraints explicitly.
+              - Include an example only if the original prompt contains or implies one.
+              - Add more necessary detail.
+
+              IMPORTANT:
+              - Do NOT explain anything. 
+              - Do NOT include a format or section labels like "Context", "Task", etc.
+              - DO return the improved prompt as a single paragraph or bullet-form instruction.
+              - Preserve the original language (English, Indonesian, etc).`
+            : "Make the prompt concise and focused while maintaining clarity."
+        }
+
+        NOTE — global rules (apply to all styles):
+        1. Do not interpret the prompt or expand on it. Just rewrite it.
+        2. Output the improved prompt only; no explanations.
+        3. Give an example only if it already exists or is clearly required.
+        4. Do not treat the original prompt as a task to perform.\n
+        ORIGINAL PROMPT:
+        """${prompt}"""`,
+        model: model
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok || !data.text) {
+      throw new Error('Failed to get valid response from Gemini API');
+    }
+
+    return { text: data.text, model };
+  };
+
+  const callCloudflareAI = async (prompt: string): Promise<{text: string, model: string}> => {
+    const model = 'cloudflare-ai';
+    const response = await fetch(process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || "", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: `You are an expert prompt engineer.
+
+            Transform the ORIGINAL PROMPT below into a sharper, fully-structured prompt while *strictly* preserving its original intent, context, tone, and language (English, Indonesian, or any other).
+
+            ${
+              promptStyle === "detailed"
+                ? `Rewrite the original prompt to make it more structured, detailed, and comprehensive, while still concise and focused.
+
+                  Apply advanced prompt engineering principles:
+                  - Be specific (replace vague instructions with precise ones).
+                  - Provide relevant context (if already implied in the original).
+                  - Clarify goals and constraints explicitly.
+                  - Include an example only if the original prompt contains or implies one.
+                  - Add more necessary detail.
+
+                  IMPORTANT:
+                  - Do NOT explain anything. 
+                  - Do NOT include a format or section labels like "Context", "Task", etc.
+                  - DO return the improved prompt as a single paragraph or bullet-form instruction.
+                  - Preserve the original language (English, Indonesian, etc).`
+                : "Make the prompt concise and focused while maintaining clarity."
+            }
+
+            NOTE — global rules (apply to all styles):
+            1. Do not interpret the prompt or expand on it. Just rewrite it.
+            2. Output the improved prompt only; no explanations.
+            3. Give an example only if it already exists or is clearly required.
+            4. Do not treat the original prompt as a task to perform.\n
+            ORIGINAL PROMPT:
+            \"\"\"${prompt}\"\"\``,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Cloudflare AI error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.result?.response || data.choices?.[0]?.message?.content || '';
+    return { text, model };
+  };
+
+  const processImprovePrompt = async () => {
     setError("");
     setIsLoading(true);
     setProgress(0);
@@ -148,64 +261,17 @@ export default function PromptImprover() {
     }, 500);
 
     try {
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || "",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: "user",
-                content: `You are an expert prompt engineer.
-
-              Transform the ORIGINAL PROMPT below into a sharper, fully-structured prompt while *strictly* preserving its original intent, context, tone, and language (English, Indonesian, or any other).
-
-              ${
-                promptStyle === "detailed"
-                  ? `Rewrite the original prompt to make it more structured, detailed, and comprehensive, while still concise and focused.
-
-                    Apply advanced prompt engineering principles:
-                    - Be specific (replace vague instructions with precise ones).
-                    - Provide relevant context (if already implied in the original).
-                    - Clarify goals and constraints explicitly.
-                    - Include an example only if the original prompt contains or implies one.
-                    - Add more necessary detail.
-
-                    IMPORTANT:
-                    - Do NOT explain anything. 
-                    - Do NOT include a format or section labels like "Context", "Task", etc.
-                    - DO return the improved prompt as a single paragraph or bullet-form instruction.
-                    - Preserve the original language (English, Indonesian, etc).`
-                  : "Make the prompt concise and focused while maintaining clarity."
-              }
-
-              NOTE — global rules (apply to all styles):
-              1. Do not interpret the prompt or expand on it. Just rewrite it.
-              2. Output the improved prompt only; no explanations.
-              3. Give an example only if it already exists or is clearly required.
-              4. Do not treat the original prompt as a task to perform.\n
-
-              ORIGINAL PROMPT:
-              \"\"\"${originalPrompt}\"\"\"`,
-              },
-            ],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      // Try Gemini API first, fall back to Cloudflare AI if it fails
+      let result;
+      try {
+        result = await callGeminiAPI(originalPrompt);
+      } catch (geminiError) {
+        console.warn('Gemini API failed, falling back to Cloudflare AI:', geminiError);
+        result = await callCloudflareAI(originalPrompt);
       }
-
-      const data = await response.json();
-      const improved = data?.[0]?.response?.response?.trim();
-
-      if (!improved) {
-        throw new Error("Invalid AI response format.");
-      }
+      
+      const improved = result.text;
+      setModelUsed(result.model);
 
       clearInterval(progressInterval);
       setProgress(100);
@@ -401,6 +467,7 @@ export default function PromptImprover() {
                 isCopied={isCopied}
                 onCopy={copyToClipboard}
                 onPromptIt={() => setIsPromptDialogOpen(true)}
+                model={modelUsed || undefined}
                 onTemplateSelect={(template) => {
                   setOriginalPrompt(template);
                   // Set focus to the input field after a small delay to ensure it's rendered

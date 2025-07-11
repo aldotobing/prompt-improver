@@ -37,8 +37,9 @@ export interface ImprovedPromptDisplayProps {
   improvedPrompt: string;
   isCopied: boolean;
   onCopy: () => void;
-  onPromptIt: () => void;
+  onPromptIt?: () => void;
   onTemplateSelect?: (template: string) => void;
+  model?: string;
 }
 
 export interface HistoryTabProps {

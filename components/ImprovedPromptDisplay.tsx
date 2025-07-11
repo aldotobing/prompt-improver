@@ -10,6 +10,7 @@ export const ImprovedPromptDisplay = ({
   isCopied,
   onCopy,
   onPromptIt,
+  model,
 }: ImprovedPromptDisplayProps) => {
   return (
     <motion.div
@@ -17,13 +18,18 @@ export const ImprovedPromptDisplay = ({
       animate={{ opacity: 1 }}
       transition={{ delay: 0.6, duration: 0.5 }}
     >
-    <div className="mb-2">
+    <div className="mb-2 flex justify-between items-center">
       <label
         htmlFor="improved-prompt"
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+        className="text-sm font-medium text-gray-700 dark:text-gray-300"
       >
         Improved Prompt
       </label>
+      {model && (
+        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+          {model}
+        </span>
+      )}
     </div>
     <div className="p-6 rounded-lg shadow-lg border bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 dark:bg-gray-800/90 dark:border-gray-600">
       <div className="prose max-w-none mb-4 prose-blue dark:prose-invert dark:prose-p:text-gray-200 dark:prose-headings:text-gray-100 dark:prose-strong:text-blue-300 dark:prose-em:text-blue-200">

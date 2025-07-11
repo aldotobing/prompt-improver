@@ -23,9 +23,10 @@ import { renderFormattedResponse } from "@/lib/text-formatter";
 import {
   INITIAL_MESSAGES_TEXT,
   INITIAL_MESSAGES_IMAGE,
-  IMAGE_GENERATION_MESSAGES,
+  GEMINI_MESSAGES,
   DEEPSEEK_MESSAGES,
   CLOUDFLARE_LLAMA_MESSAGES,
+  IMAGE_GENERATION_MESSAGES,
   DEFAULT_INITIAL_MESSAGE_TEXT,
   DEFAULT_INITIAL_MESSAGE_IMAGE,
 } from "@/lib/loading-messages";
@@ -49,7 +50,7 @@ export function PromptResultDialog({
   const [progress, setProgress] = useState(0);
   const [wordCount, setWordCount] = useState(0);
   const [usedApiProvider, setUsedApiProvider] = useState<
-    "deepseek" | "cloudflare_text" | "cloudflare_image" | null
+    "gemini" | "deepseek" | "cloudflare_text" | "cloudflare_image" | null
   >(null);
 
   const [displayedLoadingMessage, setDisplayedLoadingMessage] = useState(
@@ -157,22 +158,51 @@ export function PromptResultDialog({
         return;
       }
 
-      startLoadingAnimation(DEEPSEEK_MESSAGES);
-      let deepseekResponse = await fetch(
-        process.env.NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL || "",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: prompt + additionalString }),
+      // First try Gemini
+      try {
+        startLoadingAnimation(GEMINI_MESSAGES); // Use Gemini-specific messages
+        const geminiResponse = await fetch(
+          process.env.NEXT_PUBLIC_AI_PROXY_ENDPOINT || "",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: prompt + additionalString,
+              model: 'gemini-2.5-flash'
+            }),
+          }
+        );
+        if (!geminiResponse.ok) throw new Error("Gemini API failed, falling back to DeepSeek");
+        const geminiData = await geminiResponse.json();
+        if (!geminiData?.text) throw new Error("Gemini returned no text, falling back to DeepSeek");
+        setResult(geminiData.text);
+        setUsedApiProvider("gemini");
+        return;
+      } catch (geminiError) {
+        console.warn("Gemini API failed, falling back to DeepSeek:", geminiError);
+        
+        // Fallback to DeepSeek
+        try {
+          startLoadingAnimation(DEEPSEEK_MESSAGES);
+          const deepseekResponse = await fetch(
+            process.env.NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL || "",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prompt: prompt + additionalString }),
+            }
+          );
+          if (!deepseekResponse.ok) throw new Error("DeepSeek API failed, falling back to Cloudflare LLaMA");
+          const deepseekData = await deepseekResponse.json();
+          if (!deepseekData?.text) throw new Error("DeepSeek returned no text, falling back to Cloudflare LLaMA");
+          setResult(deepseekData.text);
+          setUsedApiProvider("deepseek");
+          return;
+        } catch (deepseekError) {
+          console.warn("DeepSeek API failed, falling back to Cloudflare LLaMA:", deepseekError);
+          throw new Error("Both Gemini and DeepSeek failed, trying Cloudflare LLaMA");
         }
-      );
-      if (!deepseekResponse.ok)
-        throw new Error("DeepSeek API failed, fallback");
-      let deepseekData = await deepseekResponse.json();
-      if (!deepseekData?.text)
-        throw new Error("DeepSeek returned no text, fallback");
-      setResult(deepseekData.text);
-      setUsedApiProvider("deepseek");
+      }
     } catch (err) {
       if (type === "text") {
         // Fallback for text generation
@@ -296,15 +326,12 @@ export function PromptResultDialog({
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               {type === "image" ? "Image Generation" : "Text Generation"} Result
             </DialogTitle>
-            <div className="flex items-center gap-2">
-              {isLoading && (
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Generating...</span>
-                </div>
-              )}
-              <CopyButton text={result} />
-            </div>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Generating...</span>
+              </div>
+            )}
           </div>
         </DialogHeader>
         <div className="space-y-6 mt-6">
@@ -319,18 +346,23 @@ export function PromptResultDialog({
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {type === "image" ? "Generated Image" : "Generated Text"}
               </h3>
-              {!isLoading && result && (
+              {!isLoading && usedApiProvider && (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={generateResult}
-                    disabled={isLoading}
-                    className="dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Regenerate
-                  </Button>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                    {usedApiProvider === 'gemini' && 'Google Gemini'}
+                    {usedApiProvider === 'deepseek' && 'DeepSeek-v3'}
+                    {usedApiProvider === 'cloudflare_text' && 'Meta LLaMA'}
+                    {usedApiProvider === 'cloudflare_image' && 'Stable Diffusion XL'}
+                  </span>
+                  <div className="relative group">
+                    <CopyButton 
+                      text={result} 
+                      theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                    />
+                    <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      Copy to clipboard
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -390,12 +422,14 @@ export function PromptResultDialog({
                         {error}
                       </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {usedApiProvider === "gemini" &&
+                          "Generated using Google Gemini as the primary AI."}
                         {usedApiProvider === "deepseek" &&
-                          "Generated using DeepSeek-v3 AI."}
+                          "Generated using DeepSeek-v3 AI as a fallback."}
                         {usedApiProvider === "cloudflare_text" &&
-                          "Generated using Meta LLaMA (llama-4-scout-17b-16e-instruct) for testing purposes."}
+                          "Generated using Meta LLaMA (llama-4-scout-17b-16e-instruct) as a final fallback."}
                         {usedApiProvider === "cloudflare_image" &&
-                          "Image generated using CF /stable-diffusion-xl-base-1.0."}
+                          "Image generated using Stable Diffusion XL."}
                       </span>
                     </div>
                   </div>
@@ -406,13 +440,19 @@ export function PromptResultDialog({
             </AnimatePresence>
           </div>
 
-          {/* ... (Regenerate button remains the same) */}
+          {/* Single Regenerate button at the bottom */}
           {!isLoading && result && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex justify-end"
+              className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700"
             >
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {usedApiProvider === "gemini" && "Using Google Gemini"}
+                {usedApiProvider === "deepseek" && "Fell back to DeepSeek-v3 AI"}
+                {usedApiProvider === "cloudflare_text" && "Using Meta LLaMA as final fallback"}
+                {usedApiProvider === "cloudflare_image" && "Image generated with Stable Diffusion XL"}
+              </div>
               <Button
                 variant="outline"
                 onClick={generateResult}
