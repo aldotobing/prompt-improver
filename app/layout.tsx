@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: {
@@ -177,6 +178,7 @@ export default function RootLayout({
         <main className="flex-grow">
           {children}
         </main>
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

@@ -111,13 +111,39 @@ export function VideoPromptForm({
   isSubmitting,
   onPromptImproved
 }: VideoPromptFormProps) {
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-  const [isImproving, setIsImproving] = useState(false);
+
   const [showTurnstile, setShowTurnstile] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = React.useRef<HTMLFormElement>(null);
+  
+  // Required fields for form validation
+  const requiredFields = ['subject', 'action', 'videoPurpose'];
+  
+  // Add error class to form fields with errors
+  const getFieldClass = (fieldName: string, className = '') => {
+    return `${className} ${errors[fieldName] ? 'border-red-500' : ''}`.trim();
+  };
+  
+  // Validate form fields
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+      if (!values[field]?.trim()) {
+        newErrors[field] = 'This field is required';
+        isValid = false;
+      }
+    });
+    
+    setErrors(newErrors);
+    return isValid;
+  };
 
   // Reset verification state when form values change
   useEffect(() => {
@@ -141,10 +167,38 @@ export function VideoPromptForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form before proceeding
+    const isValid = validateForm();
+    if (!isValid) {
+      // Show toast notification
+      toast.error('Please fill in all required fields', {
+        position: 'bottom-center',
+        duration: 3000,
+        style: {
+          background: '#fef2f2',
+          color: '#b91c1c',
+          border: '1px solid #fecaca',
+          borderRadius: '0.5rem',
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+        },
+      });
+      
+      // Scroll to the first error
+      const firstErrorField = requiredFields.find(field => !values[field]?.trim());
+      if (firstErrorField) {
+        const element = document.getElementById(firstErrorField);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    
     if (!isVerified) {
       setShowTurnstile(true);
       return;
     }
+    
     setIsSubmittingForm(true);
     onSubmit();
   };
@@ -246,7 +300,7 @@ export function VideoPromptForm({
 
   return (
     <TooltipProvider>
-      <form id="video-prompt-form" ref={formRef} onSubmit={handleSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-6 rounded-xl border">
           <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
             <Film className="h-6 w-6 text-primary" />
@@ -260,21 +314,31 @@ export function VideoPromptForm({
         <Section title="Basic Information" icon={Info}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Video Purpose" name="videoPurpose" tooltip="The primary goal of your video">
-              <Select
-                value={values.videoPurpose || ''}
-                onValueChange={(value) => onChange({ ...values, videoPurpose: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a purpose" />
-                </SelectTrigger>
-                <SelectContent>
-                  {VIDEO_PURPOSES.map((purpose) => (
-                    <SelectItem key={purpose} value={purpose}>
-                      {purpose}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="w-full">
+                <Select
+                  value={values.videoPurpose || ''}
+                  onValueChange={(value) => {
+                    if (errors.videoPurpose) {
+                      setErrors(prev => ({ ...prev, videoPurpose: '' }));
+                    }
+                    onChange({ ...values, videoPurpose: value });
+                  }}
+                >
+                  <SelectTrigger className={getFieldClass('videoPurpose', 'w-full')}>
+                    <SelectValue placeholder="Select a purpose" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VIDEO_PURPOSES.map((purpose) => (
+                      <SelectItem key={purpose} value={purpose}>
+                        {purpose}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {errors.videoPurpose && (
+                <p className="mt-1 text-sm text-red-500">{errors.videoPurpose}</p>
+              )}
             </FormField>
 
             <FormField label="Target Audience" name="targetAudience" tooltip="Who is this video for?">
@@ -327,22 +391,44 @@ export function VideoPromptForm({
         <Section title="Visual Style" icon={Palette}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField label="Subject" name="subject" tooltip="The main focus of your video">
-              <Input
-                id="subject"
-                placeholder="e.g., A futuristic city skyline"
-                value={values.subject || ''}
-                onChange={(e) => onChange({ ...values, subject: e.target.value })}
-              />
+              <div className="w-full">
+                <Input
+                  id="subject"
+                  placeholder="What's the main subject of your video?"
+                  value={values.subject || ''}
+                  onChange={(e) => {
+                    if (errors.subject) {
+                      setErrors(prev => ({ ...prev, subject: '' }));
+                    }
+                    onChange({ ...values, subject: e.target.value });
+                  }}
+                  className={getFieldClass('subject')}
+                />
+                {errors.subject && (
+                  <p className="mt-1 text-sm text-red-500">{errors.subject}</p>
+                )}
+              </div>
             </FormField>
 
             <FormField label="Action" name="action" tooltip="What's happening in the scene">
-              <Textarea
-                id="action"
-                placeholder="e.g., flying cars zooming between holographic skyscrapers, people wearing AR glasses"
-                value={values.action || ''}
-                onChange={(e) => onChange({ ...values, action: e.target.value })}
-                rows={3}
-              />
+              <div className="w-full">
+                <Textarea
+                  id="action"
+                  placeholder="e.g., flying cars zooming between holographic skyscrapers, people wearing AR glasses"
+                  value={values.action || ''}
+                  onChange={(e) => {
+                    if (errors.action) {
+                      setErrors(prev => ({ ...prev, action: '' }));
+                    }
+                    onChange({ ...values, action: e.target.value });
+                  }}
+                  rows={3}
+                  className={getFieldClass('action')}
+                />
+                {errors.action && (
+                  <p className="mt-1 text-sm text-red-500">{errors.action}</p>
+                )}
+              </div>
             </FormField>
 
             <FormField label="Mood" name="mood" tooltip="The emotional tone of the video">
@@ -495,52 +581,53 @@ export function VideoPromptForm({
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      onChange({
-                        videoPurpose: '',
-                        targetAudience: '',
-                        aspectRatio: '16:9 (Widescreen)',
-                        frameRate: '30fps (NTSC)',
-                        subject: '',
-                        action: '',
-                        mood: '',
-                        colorPalette: '',
-                        cameraShot: '',
-                        cameraMovement: '',
-                        videoStyleSelect: '',
-                        composition: '',
-                        videoStyleDetail: '',
-                        lightingDetail: '',
-                        additionalDetails: '',
-                        audioDescription: ''
-                      });
-                    }}
-                    className="h-12 flex-1 border-muted-foreground/30 hover:border-foreground/50 text-muted-foreground hover:text-foreground"
-                  >
-                    <span className="text-base">Clear Form</span>
-                  </Button>
-                  
-                  <Button 
-                    type="submit" 
-                    className="h-12 flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <PlayCircle className="mr-2 h-5 w-5" />
-                        <span className="text-base">Generate Video Prompt</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setErrors({});
+                    onChange({
+                      videoPurpose: '',
+                      targetAudience: '',
+                      aspectRatio: '16:9 (Widescreen)',
+                      frameRate: '30fps (NTSC)',
+                      subject: '',
+                      action: '',
+                      mood: '',
+                      colorPalette: '',
+                      cameraShot: '',
+                      cameraMovement: '',
+                      videoStyleSelect: '',
+                      composition: '',
+                      videoStyleDetail: '',
+                      lightingDetail: '',
+                      additionalDetails: '',
+                      audioDescription: ''
+                    });
+                  }}
+                  className="h-12 flex-1 border-muted-foreground/30 hover:border-foreground/50 text-muted-foreground hover:text-foreground"
+                >
+                  <span className="text-base">Clear Form</span>
+                </Button>
+                
+                <Button 
+                  type="submit" 
+                  className="h-12 flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="mr-2 h-5 w-5" />
+                      <span className="text-base">Generate Video Prompt</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

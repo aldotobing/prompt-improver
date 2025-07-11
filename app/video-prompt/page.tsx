@@ -38,6 +38,7 @@ export default function VideoPromptGenerator() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiModelUsed, setAiModelUsed] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -128,18 +129,102 @@ export default function VideoPromptGenerator() {
 - **Audio Description**: ${values.audioDescription || 'Not specified'}
 - **Additional Notes**: ${values.additionalDetails || 'None'}`;
 
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_CLOUDFLARE_AI_URL || '/api/improve-prompt',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: 'user',
-                content: `# Video Prompt Generation Task
+      // First try Google Gemini
+      try {
+        const geminiResponse = await fetch(
+          process.env.NEXT_PUBLIC_AI_PROXY_ENDPOINT || '',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              prompt: `# Video Prompt Generation Task
+
+## Provided Context
+${promptContext}
+
+## Your Task
+Create a comprehensive, production-ready video prompt that brings the above concept to life. 
+Use the following structure and incorporate all provided details from the context.
+
+# [Create a compelling title that captures the essence of: ${values.subject || 'the video'}]
+
+## Video Concept
+- **Core Idea**: Synthesize the purpose (${values.videoPurpose || 'N/A'}), subject (${values.subject || 'N/A'}), and action (${values.action || 'N/A'}) into a clear, engaging concept.
+- **Target Audience**: ${values.targetAudience ? `Tailor the content for: ${values.targetAudience}` : 'General audience'}
+- **Emotional Impact**: Capture the mood of "${values.mood || 'neutral'}" through visual and narrative elements
+
+## Visual Direction
+- **Cinematic Style**: ${values.videoStyleSelect ? `Incorporate the style of: ${values.videoStyleSelect}` : 'Use a cinematic approach'}
+- **Color Palette**: ${values.colorPalette ? `Utilize these colors: ${values.colorPalette}` : 'Choose appropriate colors'}
+- **Visual Elements**: ${values.composition ? `Consider composition: ${values.composition}` : 'Focus on strong visual composition'}
+
+## Shot Composition
+- **Camera Shots**: ${values.cameraShot ? `Primary shot type: ${values.cameraShot}` : 'Select appropriate shot types'}
+- **Camera Movement**: ${values.cameraMovement ? `Movement style: ${values.cameraMovement}` : 'Use dynamic camera movements'}
+- **Framing**: Consider aspect ratio: ${values.aspectRatio || 'standard widescreen'}
+
+## Lighting & Atmosphere
+- **Lighting Approach**: ${values.lightingDetail ? `Lighting details: ${values.lightingDetail}` : 'Use appropriate lighting'}
+- **Mood Enhancement**: Amplify the "${values.mood || 'neutral'}" mood through lighting and composition
+- **Visual Tone**: Match the tone to the purpose: ${values.videoPurpose || 'general video'}
+
+## Audio Direction
+- **Sound Design**: ${values.audioDescription ? `Audio elements: ${values.audioDescription}` : 'Enhance with appropriate sound design'}
+- **Music Selection**: Choose music that complements the "${values.mood || 'neutral'}" mood
+- **Pacing**: Align with frame rate: ${values.frameRate || 'standard'}
+
+## Technical Specifications
+- **Aspect Ratio**: ${values.aspectRatio || '16:9 (Widescreen)'}
+- **Frame Rate**: ${values.frameRate || 'Standard frame rate'}
+- **Visual Quality**: High-definition with attention to ${values.videoStyleSelect || 'cinematic'} details
+
+## Production Notes
+- **Key Scenes**: Outline 3-5 key scenes based on the subject and action
+- **Transitions**: Suggest transitions that enhance the "${values.mood || 'neutral'}" mood
+- **Special Instructions**: ${values.additionalDetails || 'No additional instructions provided'}
+
+GUIDELINES:
+• Be specific and detailed in all descriptions 
+• DO NOT ADD any explanation
+• Use vivid, sensory language to create clear mental images 
+• Maintain consistency with all provided specifications
+• Focus on visual storytelling elements
+• Include relevant technical details for production 
+• Keep the tone professional yet engaging 
+• Ensure the prompt is ready for immediate use with AI video generation tools`,
+              model: 'gemini-2.5-flash'
+            }),
+          }
+        );
+
+        if (!geminiResponse.ok) throw new Error("Gemini API failed, falling back to DeepSeek");
+        const geminiData = await geminiResponse.json();
+        if (!geminiData?.text) throw new Error("Gemini returned no text, falling back to DeepSeek");
+        
+        setGeneratedPrompt(geminiData.text);
+        setAiModelUsed('Google Gemini');
+        setShowPreview(true);
+        setIsGenerating(false);
+        return;
+      } catch (geminiError) {
+        console.warn("Gemini API failed, falling back to DeepSeek:", geminiError);
+        
+        // Fallback to DeepSeek
+        try {
+          const deepseekResponse = await fetch(
+            process.env.NEXT_PUBLIC_CLOUDFLARE_DEEPSEEK_AI_URL || '',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messages: [
+                  {
+                    role: 'user',
+                    content: `# Video Prompt Generation Task
 
 ## Provided Context
 ${promptContext}
@@ -194,23 +279,29 @@ GUIDELINES:
 • Include relevant technical details for production 
 • Keep the tone professional yet engaging 
 • Ensure the prompt is ready for immediate use with AI video generation tools`
-              },
-            ],
-          }),
-        }
-      );
+                  },
+                ],
+              }),
+            }
+          );
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+          if (!deepseekResponse.ok) throw new Error("DeepSeek API failed");
+          const deepseekData = await deepseekResponse.json();
+          if (!deepseekData?.text) throw new Error("DeepSeek returned no text");
+          
+          setGeneratedPrompt(deepseekData.text);
+          setAiModelUsed('DeepSeek');
+          setShowPreview(true);
+          setIsGenerating(false);
+          return;
+        } catch (deepseekError) {
+          console.error("DeepSeek API failed:", deepseekError);
+          throw new Error("Failed to generate video prompt. Please try again later.");
+        }
       }
 
-      const data = await response.json();
-      const improvedPrompt = data?.[0]?.response?.response?.trim() || 
-                          data?.result?.response?.trim() || 
-                          'Failed to generate prompt';
-
-      setGeneratedPrompt(improvedPrompt);
-      setShowPreview(true);
+      // State is already updated in the try-catch blocks above
+      // No need for additional state updates here
       
       // Scroll to preview
       setTimeout(() => {
@@ -219,8 +310,7 @@ GUIDELINES:
       
       toast.success('Video prompt generated successfully!');
     } catch (error) {
-      console.error('Error generating prompt:', error);
-      toast.error('Failed to generate prompt. Please try again.');
+      console.error('Error generating video prompt:', error);
       // Fallback to local generation if API fails
       const template = `Create a video with the following details:
 Subject: ${values.subject || 'N/A'}
@@ -228,7 +318,9 @@ Action: ${values.action || 'N/A'}
 Mood: ${values.mood || 'N/A'}
 Color Palette: ${values.colorPalette || 'N/A'}`;
       setGeneratedPrompt(generateVeoPrompt(template, values));
+      setAiModelUsed('Local Fallback');
       setShowPreview(true);
+      toast.error('Using fallback generation. ' + (error instanceof Error ? error.message : 'Failed to generate video prompt'));
     } finally {
       setIsGenerating(false);
     }
@@ -237,6 +329,7 @@ Color Palette: ${values.colorPalette || 'N/A'}`;
   const resetForm = useCallback(() => {
     setValues(DEFAULT_VALUES);
     setGeneratedPrompt('');
+    setAiModelUsed('');
     setShowPreview(false);
     toast.info('Form has been reset');
   }, []);
@@ -394,11 +487,16 @@ Color Palette: ${values.colorPalette || 'N/A'}`;
             {showPreview && generatedPrompt && (
               <div id="preview-section" className="space-y-4 animate-fade-in">
                 <Card className="overflow-hidden border-primary/20">
-                  <div className="bg-muted/50 p-4 border-b flex justify-between items-center">
+                  <div className="bg-muted/50 p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-primary"></div>
                       <span className="text-sm font-mono text-muted-foreground">Your Video Prompt</span>
                     </div>
+                    {aiModelUsed && (
+                      <div className="text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-full border">
+                        Generated with: <span className="font-medium text-primary">{aiModelUsed}</span>
+                      </div>
+                    )}
                     <div className="relative group">
                       <Button 
                         variant="ghost"
@@ -456,7 +554,7 @@ Color Palette: ${values.colorPalette || 'N/A'}`;
         
         <footer className="mt-16 pt-8 border-t text-center text-sm text-muted-foreground">
           <p>AI Video Generator • Create stunning video content with AI assistance</p>
-          <p className="mt-2 text-xs opacity-70"> {new Date().getFullYear()} Your Company Name. All rights reserved.</p>
+          <p className="mt-2 text-xs opacity-70"> {new Date().getFullYear()} Aldo Tobing. All rights reserved.</p>
         </footer>
       </div>
     </div>
