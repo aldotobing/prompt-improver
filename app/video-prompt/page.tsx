@@ -187,6 +187,7 @@ Use the following structure and incorporate all provided details from the contex
 
 GUIDELINES:
 • Be specific and detailed in all descriptions 
+• DO NOT ADD any explanation
 • Use vivid, sensory language to create clear mental images 
 • Maintain consistency with all provided specifications
 • Focus on visual storytelling elements

@@ -129,18 +129,24 @@ export function VideoPromptForm({
   const handleVerify = (token: string) => {
     setIsVerified(true);
     setTurnstileToken(token);
-    // Submit the form directly after verification
-    onSubmit();
+    
+    // Wait for a short delay before hiding the widget and submitting
+    setTimeout(() => {
+      setShowTurnstile(false);
+      // Submit the form after verification
+      setIsSubmittingForm(true);
+      onSubmit();
+    }, 1000); // 1 second delay
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // If not verified yet, show the Turnstile widget
     if (!isVerified) {
       setShowTurnstile(true);
       return;
     }
+    setIsSubmittingForm(true);
+    onSubmit();
   };
 
   const handleError = () => {
@@ -462,8 +468,8 @@ export function VideoPromptForm({
             <div className="max-w-3xl mx-auto">
               {/* Turnstile Verification */}
               <div className="flex flex-col items-center space-y-2 my-4">
-                {showTurnstile && (
-                  <div className="w-full max-w-xs mx-auto bg-background p-2 rounded-lg">
+                {showTurnstile && !isVerified && (
+                  <div className="w-full max-w-xs mx-auto bg-background p-2 rounded-lg transition-opacity duration-300">
                     <div className="mt-2">
                       <div className="text-center mb-3">
                         <p className="text-sm font-medium text-foreground mb-1">Security Check Required</p>
@@ -475,13 +481,13 @@ export function VideoPromptForm({
                         </p>
                       </div>
                       <div className="flex justify-center">
-                      <TurnstileWidget
-                        theme="light"
-                        onVerify={handleVerify}
-                        onError={handleError}
-                        onExpire={handleExpire}
-                      />
-                    </div>
+                        <TurnstileWidget
+                          theme="light"
+                          onVerify={handleVerify}
+                          onError={handleError}
+                          onExpire={handleExpire}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
